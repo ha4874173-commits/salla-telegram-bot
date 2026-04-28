@@ -9,7 +9,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Cont
 # --- 1. الإعدادات ---
 TOKEN = '8232201715:AAFEvsg1y3tD8_CXOXx0NT2CsdZU_jw9sN8'
 SALLA_TOKEN = 'ea8d83f12f8260155ab87809c4ee4e70c3099b06d93852a23d7c72451d9d89ad' 
-CHANNEL_ID = '-1003953368081''
+CHANNEL_ID = '-1003953368081'
 
 URLS = {
     "spx_1m": "https://salla.sa/AZIZSPX/WzbWgKA",
