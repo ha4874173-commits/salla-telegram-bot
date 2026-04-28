@@ -23,7 +23,7 @@ URLS = {
     "ind_6m": "https://salla.sa/indicators-6-months",
     "ind_1y": "https://salla.sa/indicators-1-year",
     
-    "support": "https://t.me/your_support_username"
+    "support": "https://t.me/@D_HL77"
 }
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
