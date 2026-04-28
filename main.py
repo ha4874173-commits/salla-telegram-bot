@@ -17,10 +17,10 @@ URLS = {
     "spx_3m": "https://salla.sa/AZIZSPX/xvnbrQb",
     "spx_6m": "https://salla.sa/AZIZSPX/azdOBBK",
     "spx_1y": "https://salla.sa/spx-1-year",
-    "ind_1m": "https://salla.sa/indicators-1-months",
+    "ind_1m": "https://salla.sa/AZIZSPX/EXKwOwZ",
     "ind_3m": "https://salla.sa/indicators-3-months",
     "ind_6m": "https://salla.sa/indicators-6-months",
-    "ind_1y": "https://salla.sa/AZIZSPX/EXKwOwZ",
+    "ind_1y": "https://salla.sa/indicators-1-year",
     "support": "https://t.me/ess942"
 }
 
@@ -65,16 +65,14 @@ async def check_expirations(context: ContextTypes.DEFAULT_TYPE):
         try:
             await context.bot.ban_chat_member(chat_id=CHANNEL_ID, user_id=user_id)
             await context.bot.unban_chat_member(chat_id=CHANNEL_ID, user_id=user_id)
-            await context.bot.send_message(chat_id=user_id, text="⚠️ انتهت فترة التجربة المجانية 7 أيام. للاستمرار بالقناة يرجى الاشتراك.")
-            
-            # مسح المستخدم من الداتابيز بعد الطرد عشان ميفضلش يطرده كل دقيقة
+            await context.bot.send_message(chat_id=user_id, text="⚠️ انتهت فترة التجربة المجانية. للاستمرار بالقناة يرجى الاشتراك.")
             conn = sqlite3.connect('users.db')
             c = conn.cursor()
             c.execute("DELETE FROM users WHERE user_id=?", (user_id,))
             conn.commit()
             conn.close()
-        except Exception as e:
-            logging.error(f"Error kicking {user_id}: {e}")
+        except:
+            pass
 
 # --- 4. واجهة البوت ---
 def main_menu_keyboard():
@@ -88,11 +86,8 @@ def main_menu_keyboard():
     return InlineKeyboardMarkup(keyboard)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "مرحباً بك في بوت خدماتنا التقنية! 🚀\nالرجاء اختيار الخدمة المطلوبة:",
-        reply_markup=main_menu_keyboard()
-    )
-    
+    await update.message.reply_text("مرحباً بك في بوت خدماتنا التقنية! 🚀\nالرجاء اختيار الخدمة المطلوبة:", reply_markup=main_menu_keyboard())
+
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     user_id = query.from_user.id
@@ -106,46 +101,67 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             invite_link = await context.bot.create_chat_invite_link(chat_id=CHANNEL_ID, member_limit=1)
             await query.edit_message_text(f"✅ تم تفعيل التجربة المجانية لـ 7 أيام.\nرابط الدخول للقناة:\n{invite_link.invite_link}")
 
-    elif query.data == 'back_to_main':
-        await query.edit_message_text("اختر الخدمة المطلوبة:", reply_markup=main_menu_keyboard())
-
-    # (بقية الأكواد الخاصة بـ menu_spx و menu_indicators والعودة زي الكود السابق)
     elif query.data == 'menu_spx':
         keyboard = [
             [InlineKeyboardButton("شهر - 100 ريال", url=URLS["spx_1m"])],
-            [InlineKeyboardButton("3 شهور - 379 ريال", url=URLS["spx_3m"])],
+            [InlineKeyboardButton("3 شهور - 279 ريال", url=URLS["spx_3m"])],
             [InlineKeyboardButton("6 شهور - 549 ريال", url=URLS["spx_6m"])],
-            [InlineKeyboardButton("🔙 عودة", callback_data='back_to_main')]
+            [InlineKeyboardButton("🔙 عودة للقائمة الرئيسية", callback_data='back_to_main')]
         ]
-        await query.edit_message_text("اشتراكات تحليل SPX:", reply_markup=InlineKeyboardMarkup(keyboard))
-    
+        await query.edit_message_text("اختر مدة اشتراك تحليل SPX:", reply_markup=InlineKeyboardMarkup(keyboard))
+
     elif query.data == 'menu_indicators':
         keyboard = [
-            [InlineKeyboardButton(" مؤشر Aziz pro  - 399 ريال", url=URLS["ind_1y"])],
-            [InlineKeyboardButton("🔙 عودة", callback_data='back_to_main')]
+            [InlineKeyboardButton("Aziz pro مؤشر - 399 ريال", url=URLS["ind_1y"])],
+            [InlineKeyboardButton("🔙 عودة للقائمة الرئيسية", callback_data='back_to_main')]
         ]
-        await query.edit_message_text("اشتراكات المؤشرات الفنية:", reply_markup=InlineKeyboardMarkup(keyboard))
+        await query.edit_message_text("اختر مدة اشتراك المؤشرات الفنية:", reply_markup=InlineKeyboardMarkup(keyboard))
 
-  elif query.data == 'verify_payment':
+    elif query.data == 'verify_payment':
         context.user_data['waiting_for_order'] = True
         keyboard = [[InlineKeyboardButton("❌ إلغاء", callback_data='back_to_main')]]
         await query.edit_message_text("أرسل رقم الطلب من سلة للتحقق:", reply_markup=InlineKeyboardMarkup(keyboard))
 
-# (نفس دالة handle_message و verify_salla_order من الكود السابق مع إضافة المشترك المدفوع للداتابيز بمدته)
+    elif query.data == 'back_to_main':
+        context.user_data['waiting_for_order'] = False
+        await query.edit_message_text("الرجاء اختيار الخدمة المطلوبة:", reply_markup=main_menu_keyboard())
+
+# --- 5. التحقق والرسائل ---
+def verify_salla_order(order_id):
+    if SALLA_TOKEN == 'حط_هنا_التوكن_اللي_هيبعته_فيصل':
+        return False
+    headers = {'Authorization': f'Bearer {SALLA_TOKEN}', 'Content-Type': 'application/json'}
+    try:
+        response = requests.get(f'https://api.salla.dev/admin/v2/orders/{order_id}', headers=headers)
+        if response.status_code == 200:
+            status = response.json()['data']['status']['id']
+            return status in ['completed', 'delivered']
+        return False
+    except:
+        return False
+
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if context.user_data.get('waiting_for_order'):
+        order_id = update.message.text.strip()
+        if not order_id.isdigit():
+            await update.message.reply_text("الرجاء إرسال رقم طلب صحيح.")
+            return
+        await update.message.reply_text("جاري التحقق... ⏳")
+        if verify_salla_order(order_id):
+            invite_link = await context.bot.create_chat_invite_link(chat_id=CHANNEL_ID, member_limit=1)
+            await update.message.reply_text(f"✅ تم التحقق! تفضل بالرابط:\n{invite_link.invite_link}")
+        else:
+            await update.message.reply_text("❌ لم يتم العثور على طلب مدفوع.")
+        context.user_data['waiting_for_order'] = False
 
 def main():
     init_db()
     app = Application.builder().token(TOKEN).build()
     
-    # تشغيل فحص انتهاء الاشتراك كل ساعة
-    job_queue = app.job_queue
-    job_queue.run_repeating(check_expirations, interval=3600, first=10)
+    # تشغيل المجدول
+    if app.job_queue:
+        app.job_queue.run_repeating(check_expirations, interval=3600, first=10)
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(button_handler))
-    # (إضافة بقية الـ handlers)
-    
-    app.run_polling()
-
-if __name__ == '__main__':
-    main()
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
