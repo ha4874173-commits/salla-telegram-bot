@@ -1,1 +1,1 @@
-worker: python "import logging.py"
+worker: python main.py
