@@ -79,11 +79,11 @@ async def check_expirations(context: ContextTypes.DEFAULT_TYPE):
 # --- 4. واجهة البوت ---
 def main_menu_keyboard():
     keyboard = [
-        [InlineKeyboardButton("📊 اشتراك تحليل SPX", callback_data='menu_spx')],
-        [InlineKeyboardButton("📈 اشتراك المؤشرات الفنية", callback_data='menu_indicators')],
-        [InlineKeyboardButton("🎁 تجربة مجانية (7 أيام)", callback_data='free_trial')],
-        [InlineKeyboardButton("✅ تأكيد الدفع (رقم الطلب)", callback_data='verify_payment')],
-        [InlineKeyboardButton("💬 الدعم الفني", url=URLS["support"])]
+        [InlineKeyboardButton("📊 اشتراك تحليلات SPX العالمية 📊", callback_data='menu_spx')],
+        [InlineKeyboardButton("📈 اشتراك المؤشرات الفنية الخاصة 📈", callback_data='menu_indicators')],
+        [InlineKeyboardButton("🎁 تجربة مجانية (7 أيام) 🎁", callback_data='free_trial')],
+        [InlineKeyboardButton("✅ تأكيد الدفع (رقم الطلب) ✅", callback_data='verify_payment')],
+        [InlineKeyboardButton("💬 التواصل مع الدعم الفني 💬", url=URLS["support"])]
     ]
     return InlineKeyboardMarkup(keyboard)
 
