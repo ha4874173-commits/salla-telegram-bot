@@ -5,22 +5,17 @@ import sqlite3
 from datetime import datetime, timedelta
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 # --- 1. الإعدادات ---
 TOKEN = '8232201715:AAFEvsg1y3tD8_CXOXx0NT2CsdZU_jw9sN8'
 SALLA_TOKEN = 'ea8d83f12f8260155ab87809c4ee4e70c3099b06d93852a23d7c72451d9d89ad' 
-CHANNEL_ID = '-1002462310103'
+CHANNEL_ID = '-3953368081'
 
 URLS = {
     "spx_1m": "https://salla.sa/AZIZSPX/WzbWgKA",
     "spx_3m": "https://salla.sa/AZIZSPX/xvnbrQb",
     "spx_6m": "https://salla.sa/AZIZSPX/azdOBBK",
-    "spx_1y": "https://salla.sa/spx-1-year",
     "ind_1m": "https://salla.sa/AZIZSPX/EXKwOwZ",
-    "ind_3m": "https://salla.sa/indicators-3-months",
-    "ind_6m": "https://salla.sa/indicators-6-months",
-    "ind_1y": "https://salla.sa/indicators-1-year",
     "support": "https://t.me/ess942"
 }
 
@@ -52,7 +47,7 @@ def has_used_trial(user_id):
     conn.close()
     return res is not None
 
-# --- 3. نظام الطرد التلقائي ---
+# --- 3. فحص الصلاحية والطرد ---
 async def check_expirations(context: ContextTypes.DEFAULT_TYPE):
     now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     conn = sqlite3.connect('users.db')
@@ -98,6 +93,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.edit_message_text("❌ عذراً، لقد استخدمت الفترة التجريبية مسبقاً.")
         else:
             add_user(user_id, 7)
+            # إنشاء رابط دعوة صالح لشخص واحد فقط
             invite_link = await context.bot.create_chat_invite_link(chat_id=CHANNEL_ID, member_limit=1)
             await query.edit_message_text(f"✅ تم تفعيل التجربة المجانية لـ 7 أيام.\nرابط الدخول للقناة:\n{invite_link.invite_link}")
 
@@ -126,39 +122,48 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['waiting_for_order'] = False
         await query.edit_message_text("الرجاء اختيار الخدمة المطلوبة:", reply_markup=main_menu_keyboard())
 
-# --- 5. التحقق والرسائل ---
+# --- 5. التحقق من سلة ---
 def verify_salla_order(order_id):
-    if SALLA_TOKEN == 'ea8d83f12f8260155ab87809c4ee4e70c3099b06d93852a23d7c72451d9d89ad':
-        return False
-    headers = {'Authorization': f'Bearer {SALLA_TOKEN}', 'Content-Type': 'application/json'}
+    # تم تعديل السطر ده عشان يقبل التوكن بتاعك مباشرة
+    headers = {
+        'Authorization': f'Bearer {SALLA_TOKEN}',
+        'Content-Type': 'application/json'
+    }
     try:
         response = requests.get(f'https://api.salla.dev/admin/v2/orders/{order_id}', headers=headers)
         if response.status_code == 200:
-            status = response.json()['data']['status']['id']
+            order_data = response.json()
+            status = order_data['data']['status']['id']
+            # التحقق إذا كان الطلب "مكتمل" أو "تم التوصيل"
             return status in ['completed', 'delivered']
         return False
-    except:
+    except Exception as e:
+        logging.error(f"Error Salla API: {e}")
         return False
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.user_data.get('waiting_for_order'):
         order_id = update.message.text.strip()
         if not order_id.isdigit():
-            await update.message.reply_text("الرجاء إرسال رقم طلب صحيح.")
+            await update.message.reply_text("الرجاء إرسال رقم طلب صحيح (أرقام فقط).")
             return
-        await update.message.reply_text("جاري التحقق... ⏳")
+        
+        await update.message.reply_text("جاري التحقق من حالة الطلب في سلة... ⏳")
+        
         if verify_salla_order(order_id):
+            # إنشاء رابط دعوة جديد للعميل اللي دفع
             invite_link = await context.bot.create_chat_invite_link(chat_id=CHANNEL_ID, member_limit=1)
-            await update.message.reply_text(f"✅ تم التحقق! تفضل بالرابط:\n{invite_link.invite_link}")
+            await update.message.reply_text(f"✅ تم التحقق بنجاح! اشتراكك مفعل.\nتفضل رابط القناة:\n{invite_link.invite_link}")
         else:
-            await update.message.reply_text("❌ لم يتم العثور على طلب مدفوع.")
+            await update.message.reply_text("❌ لم نجد طلباً مكتمل الدفع بهذا الرقم. تأكد من حالة الطلب في المتجر أو تواصل مع الدعم.")
+        
         context.user_data['waiting_for_order'] = False
 
 def main():
     init_db()
     app = Application.builder().token(TOKEN).build()
     
-    # تشغيل المجدول للفحص التلقائي
+    # تشغيل فحص انتهاء الصلاحية كل ساعة
     if app.job_queue:
         app.job_queue.run_repeating(check_expirations, interval=3600, first=10)
 
@@ -166,6 +171,7 @@ def main():
     app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
+    print("البوت يعمل الآن...")
     app.run_polling()
 
 if __name__ == '__main__':
