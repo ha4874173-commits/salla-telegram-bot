@@ -9,7 +9,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 # --- 1. الإعدادات ---
 TOKEN = '8232201715:AAFEvsg1y3tD8_CXOXx0NT2CsdZU_jw9sN8'
-SALLA_TOKEN = 'حط_هنا_التوكن_اللي_هيبعته_فيصل' 
+SALLA_TOKEN = 'ea8d83f12f8260155ab87809c4ee4e70c3099b06d93852a23d7c72451d9d89ad' 
 CHANNEL_ID = '-1002462310103'
 
 URLS = {
@@ -128,7 +128,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # --- 5. التحقق والرسائل ---
 def verify_salla_order(order_id):
-    if SALLA_TOKEN == 'حط_هنا_التوكن_اللي_هيبعته_فيصل':
+    if SALLA_TOKEN == 'ea8d83f12f8260155ab87809c4ee4e70c3099b06d93852a23d7c72451d9d89ad':
         return False
     headers = {'Authorization': f'Bearer {SALLA_TOKEN}', 'Content-Type': 'application/json'}
     try:
