@@ -5,7 +5,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
 
 # 1. إعدادات البوت والروابط
-TOKEN = '8232201715:AAFEvsg1y3tD8_CXOXx0NT2CsdZU_jw9sn8'
+TOKEN = '8232201715:AAFEvsg1y3tD8_CXOXx0NT2CsdZU_jw9sN8'
 SALLA_TOKEN = 'حط_هنا_التوكن_اللي_هيبعته_فيصل' # Access Token من سلة بلس
 CHANNEL_ID = '-1002462310103' # يوزر أو ID القناة
 
