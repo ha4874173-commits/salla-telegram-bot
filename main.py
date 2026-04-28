@@ -119,7 +119,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     elif query.data == 'menu_indicators':
         keyboard = [
-            [InlineKeyboardButton("شهر - 399 ريال", url=URLS["ind_1y"])],
+            [InlineKeyboardButton("شهر Aziz pro مؤشر - 399 ريال", url=URLS["ind_1y"])],
             [InlineKeyboardButton("🔙 عودة", callback_data='back_to_main')]
         ]
         await query.edit_message_text("اشتراكات المؤشرات الفنية:", reply_markup=InlineKeyboardMarkup(keyboard))
