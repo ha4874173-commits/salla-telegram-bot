@@ -17,10 +17,10 @@ URLS = {
     "spx_3m": "https://salla.sa/AZIZSPX/xvnbrQb",
     "spx_6m": "https://salla.sa/AZIZSPX/azdOBBK",
     "spx_1y": "https://salla.sa/spx-1-year",
-    "ind_1m": "https://salla.sa/AZIZSPX/EXKwOwZ",
+    "ind_1m": "https://salla.sa/indicators-1-months",
     "ind_3m": "https://salla.sa/indicators-3-months",
     "ind_6m": "https://salla.sa/indicators-6-months",
-    "ind_1y": "https://salla.sa/indicators-1-year",
+    "ind_1y": "https://salla.sa/AZIZSPX/EXKwOwZ",
     "support": "https://t.me/your_support_username"
 }
 
@@ -88,7 +88,8 @@ def main_menu_keyboard():
     return InlineKeyboardMarkup(keyboard)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("مرحباً بك! اختر الخدمة المطلوبة:", reply_markup=main_menu_keyboard())
+    await update.message.reply_text("مرحباً بك في بوت خدماتنا التقنية! 🚀
+الرجاء اختيار الخدمة المطلوبة::", reply_markup=main_menu_keyboard())
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
