@@ -89,7 +89,7 @@ def main_menu_keyboard():
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("مرحباً بك في بوت خدماتنا التقنية! 🚀
-الرجاء اختيار الخدمة المطلوبة::", reply_markup=main_menu_keyboard())
+الرجاء اختيار الخدمة المطلوبة)::", reply_markup=main_menu_keyboard())
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
