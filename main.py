@@ -13,11 +13,11 @@ SALLA_TOKEN = 'حط_هنا_التوكن_اللي_هيبعته_فيصل'
 CHANNEL_ID = '-1002462310103'
 
 URLS = {
-    "spx_1m": "https://salla.sa/spx-1-month",
-    "spx_3m": "https://salla.sa/spx-3-months",
-    "spx_6m": "https://salla.sa/spx-6-months",
+    "spx_1m": "https://salla.sa/AZIZSPX/WzbWgKA",
+    "spx_3m": "https://salla.sa/AZIZSPX/xvnbrQb",
+    "spx_6m": "https://salla.sa/AZIZSPX/azdOBBK",
     "spx_1y": "https://salla.sa/spx-1-year",
-    "ind_1m": "https://salla.sa/indicators-1-month",
+    "ind_1m": "https://salla.sa/AZIZSPX/EXKwOwZ",
     "ind_3m": "https://salla.sa/indicators-3-months",
     "ind_6m": "https://salla.sa/indicators-6-months",
     "ind_1y": "https://salla.sa/indicators-1-year",
@@ -109,20 +109,16 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # (بقية الأكواد الخاصة بـ menu_spx و menu_indicators والعودة زي الكود السابق)
     elif query.data == 'menu_spx':
         keyboard = [
-            [InlineKeyboardButton("شهر - 150 ريال", url=URLS["spx_1m"])],
-            [InlineKeyboardButton("3 شهور - 400 ريال", url=URLS["spx_3m"])],
-            [InlineKeyboardButton("6 شهور - 750 ريال", url=URLS["spx_6m"])],
-            [InlineKeyboardButton("سنة - 1300 ريال", url=URLS["spx_1y"])],
+            [InlineKeyboardButton("شهر - 100 ريال", url=URLS["spx_1m"])],
+            [InlineKeyboardButton("3 شهور - 379 ريال", url=URLS["spx_3m"])],
+            [InlineKeyboardButton("6 شهور - 549 ريال", url=URLS["spx_6m"])],
             [InlineKeyboardButton("🔙 عودة", callback_data='back_to_main')]
         ]
         await query.edit_message_text("اشتراكات تحليل SPX:", reply_markup=InlineKeyboardMarkup(keyboard))
     
     elif query.data == 'menu_indicators':
         keyboard = [
-            [InlineKeyboardButton("شهر - 200 ريال", url=URLS["ind_1m"])],
-            [InlineKeyboardButton("3 شهور - 550 ريال", url=URLS["ind_3m"])],
-            [InlineKeyboardButton("6 شهور - 1000 ريال", url=URLS["ind_6m"])],
-            [InlineKeyboardButton("سنة - 1800 ريال", url=URLS["ind_1y"])],
+            [InlineKeyboardButton("شهر - 399 ريال", url=URLS["ind_1y"])],
             [InlineKeyboardButton("🔙 عودة", callback_data='back_to_main')]
         ]
         await query.edit_message_text("اشتراكات المؤشرات الفنية:", reply_markup=InlineKeyboardMarkup(keyboard))
