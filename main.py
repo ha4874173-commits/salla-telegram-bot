@@ -131,8 +131,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [[InlineKeyboardButton("❌ إلغاء", callback_data='back_to_main')]]
         await query.edit_message_text(
             "من فضلك، قم بإرسال **رقم الطلب** من سلة للتحقق من اشتراكك.",
-            reply_markup=InlineKeyboardMarkup(keyboard)
-        )
+            reply_markup=InlineKeyboardMarkup(keyboard))
 
 # (نفس دالة handle_message و verify_salla_order من الكود السابق مع إضافة المشترك المدفوع للداتابيز بمدته)
 
