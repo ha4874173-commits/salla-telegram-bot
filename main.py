@@ -158,10 +158,15 @@ def main():
     init_db()
     app = Application.builder().token(TOKEN).build()
     
-    # تشغيل المجدول
+    # تشغيل المجدول للفحص التلقائي
     if app.job_queue:
         app.job_queue.run_repeating(check_expirations, interval=3600, first=10)
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    
+    app.run_polling()
+
+if __name__ == '__main__':
+    main()
