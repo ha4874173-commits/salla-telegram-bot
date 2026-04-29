@@ -7,7 +7,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Cont
 # --- 1. الإعدادات ---
 TOKEN = '8232201715:AAFEvsg1y3tD8_CXOXx0NT2CsdZU_jw9sN8'
 CHANNEL_ID = '-1003953368081'
-ADMIN_ID = 5332562107  # آيدي 
+ADMIN_ID = 5332562107  # تأكد من وضع آيدي الادمن الصحيح هنا
 
 URLS = {
     "spx_1m": "https://salla.sa/AZIZSPX/WzbWgKA",
@@ -62,7 +62,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = query.data
     await query.answer()
 
-    # --- التجربة المجانية (تفعيل آلي) ---
     if data == 'free_trial':
         if has_used_trial(user_id):
             await query.edit_message_text("❌ عذراً، لقد استخدمت الفترة التجريبية مسبقاً.")
@@ -71,41 +70,54 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             invite_link = await context.bot.create_chat_invite_link(chat_id=CHANNEL_ID, member_limit=1)
             await query.edit_message_text(f"✅ تم تفعيل تجربتك المجانية لمدة 7 أيام!\nرابط القناة:\n{invite_link.invite_link}")
 
-    # --- قائمة الاشتراكات المدفوعة ---
     elif data == 'menu_spx':
-        keyboard = [[InlineKeyboardButton("رابط الدفع", url=URLS["spx_1m"])], [InlineKeyboardButton("✅ أرسل إثبات الدفع", callback_data='upload_proof')], [InlineKeyboardButton("🔙 عودة", callback_data='back_to_main')]]
-        await query.edit_message_text("ادفع عبر سلة ثم أرسل الإثبات للمراجعة:", reply_markup=InlineKeyboardMarkup(keyboard))
+        keyboard = [
+            [InlineKeyboardButton("شهر - 100 ريال", url=URLS["spx_1m"])],
+            [InlineKeyboardButton("3 شهور - 279 ريال", url=URLS["spx_3m"])],
+            [InlineKeyboardButton("6 شهور - 549 ريال", url=URLS["spx_6m"])],
+            [InlineKeyboardButton("✅ أرسل إثبات الدفع", callback_data='upload_proof')],
+            [InlineKeyboardButton("🔙 عودة", callback_data='back_to_main')]
+        ]
+        await query.edit_message_text("اختر مدة الاشتراك للدفع عبر سلة، ثم أرسل الإثبات:", reply_markup=InlineKeyboardMarkup(keyboard))
 
     elif data == 'menu_indicators':
-        keyboard = [[InlineKeyboardButton("رابط الدفع", url=URLS["ind_1m"])], [InlineKeyboardButton("✅ أرسل إثبات الدفع", callback_data='upload_proof')], [InlineKeyboardButton("🔙 عودة", callback_data='back_to_main')]]
-        await query.edit_message_text("ادفع عبر سلة ثم أرسل الإثبات للمراجعة:", reply_markup=InlineKeyboardMarkup(keyboard))
+        keyboard = [
+            [InlineKeyboardButton("Aziz pro مؤشر - 399 ريال", url=URLS["ind_1m"])],
+            [InlineKeyboardButton("✅ أرسل إثبات الدفع", callback_data='upload_proof')],
+            [InlineKeyboardButton("🔙 عودة", callback_data='back_to_main')]
+        ]
+        await query.edit_message_text("ادفع عبر الرابط ثم أرسل الإثبات للمراجعة:", reply_markup=InlineKeyboardMarkup(keyboard))
 
     elif data == 'upload_proof':
         context.user_data['waiting_for_proof'] = True
-        await query.edit_message_text("أرسل الآن صورة الإيصال أو رقم الطلب:")
+        await query.edit_message_text("من فضلك أرسل الآن صورة الإيصال (Screenshot) أو رقم الطلب:")
 
     elif data == 'back_to_main':
+        context.user_data['waiting_for_proof'] = False
         await query.edit_message_text("اختر خدمتك المفضلة:", reply_markup=main_menu_keyboard())
 
-    # --- لوحة تحكم فيصل ---
+    # --- لوحة تحكم الإدارة (فيصل) ---
     elif data.startswith('approve_'):
         if query.from_user.id != ADMIN_ID: return
         cust_id = int(data.split('_')[1])
         invite_link = await context.bot.create_chat_invite_link(chat_id=CHANNEL_ID, member_limit=1)
         await context.bot.send_message(chat_id=cust_id, text=f"✅ تم تأكيد اشتراكك! رابط القناة:\n{invite_link.invite_link}")
-        await query.edit_message_text(f"✅ تم قبول العميل {cust_id}")
+        await query.edit_message_text(f"✅ تم قبول العميل {cust_id} وإرسال الرابط.")
 
     elif data.startswith('reject_'):
         if query.from_user.id != ADMIN_ID: return
         cust_id = int(data.split('_')[1])
-        await context.bot.send_message(chat_id=cust_id, text="❌ لم يتم تأكيد الدفع، تواصل مع الدعم.")
-        await query.edit_message_text(f"❌ تم رفض العميل {cust_id}")
+        await context.bot.send_message(chat_id=cust_id, text="❌ نعتذر، لم يتم تأكيد الدفع. يرجى التواصل مع الدعم الفني.")
+        await query.edit_message_text(f"❌ تم رفض طلب العميل {cust_id}.")
 
-# --- 4. استقبال الإثباتات ---
+# --- 4. استقبال الصور والرسائل ---
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.user_data.get('waiting_for_proof'):
         user = update.effective_user
-        admin_kb = [[InlineKeyboardButton("✅ قبول", callback_data=f"approve_{user.id}")], [InlineKeyboardButton("❌ رفض", callback_data=f"reject_{user.id}")]]
+        admin_kb = [
+            [InlineKeyboardButton("✅ قبول", callback_data=f"approve_{user.id}")],
+            [InlineKeyboardButton("❌ رفض", callback_data=f"reject_{user.id}")]
+        ]
         await context.bot.send_message(chat_id=ADMIN_ID, text=f"🔔 إثبات دفع جديد من {user.first_name} (ID: {user.id})")
         
         if update.message.photo:
@@ -113,7 +125,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             await context.bot.send_message(chat_id=ADMIN_ID, text=f"النص: {update.message.text}", reply_markup=InlineKeyboardMarkup(admin_kb))
         
-        await update.message.reply_text("⏳ تم الإرسال للمراجعة، انتظر الرد هنا.")
+        await update.message.reply_text("⏳ تم إرسال الإثبات للإدارة. ستصلك رسالة هنا فور التأكيد.")
         context.user_data['waiting_for_proof'] = False
 
 def main():
