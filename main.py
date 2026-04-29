@@ -1,14 +1,14 @@
 import logging
 import os
-import requests
 import sqlite3
+import threading
 from datetime import datetime, timedelta
+from flask import Flask, request, jsonify
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
 
 # --- 1. الإعدادات ---
 TOKEN = '8232201715:AAFEvsg1y3tD8_CXOXx0NT2CsdZU_jw9sN8'
-SALLA_TOKEN = 'ea8d83f12f8260155ab87809c4ee4e70c3099b06d93852a23d7c72451d9d89ad' 
 CHANNEL_ID = '-1003953368081'
 
 URLS = {
@@ -21,7 +21,24 @@ URLS = {
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-# --- 2. قاعدة البيانات ---
+# --- 2. إعداد Flask لاستقبال الويب هوك ---
+flask_app = Flask(__name__)
+tg_application = None # سيتم تعريفه لاحقاً
+
+@flask_app.route('/webhook', methods=['POST'])
+def salla_webhook():
+    data = request.json
+    # التحقق من أن الحدث هو اكتمال الطلب
+    if data.get('event') == 'order.updated':
+        order_status = data['data']['status']['id']
+        if order_status == 'completed':
+            customer_name = data['data']['customer']['first_name']
+            # هنا نقوم بإنشاء رابط دعوة وإرساله (يتطلب وجود Chat ID للعميل)
+            logging.info(f"✅ طلب مكتمل للعميل: {customer_name}")
+            # ملاحظة: الويب هوك لا يرسل Telegram ID، لذا العميل يجب أن يفعل البوت يدوياً أولاً
+    return jsonify({'status': 'success'}), 200
+
+# --- 3. قاعدة البيانات ---
 def init_db():
     conn = sqlite3.connect('users.db')
     c = conn.cursor()
@@ -47,29 +64,7 @@ def has_used_trial(user_id):
     conn.close()
     return res is not None
 
-# --- 3. فحص الصلاحية والطرد ---
-async def check_expirations(context: ContextTypes.DEFAULT_TYPE):
-    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    conn = sqlite3.connect('users.db')
-    c = conn.cursor()
-    c.execute("SELECT user_id FROM users WHERE expiry_date <= ?", (now,))
-    expired_users = c.fetchall()
-    conn.close()
-
-    for (user_id,) in expired_users:
-        try:
-            await context.bot.ban_chat_member(chat_id=CHANNEL_ID, user_id=user_id)
-            await context.bot.unban_chat_member(chat_id=CHANNEL_ID, user_id=user_id)
-            await context.bot.send_message(chat_id=user_id, text="⚠️ انتهت فترة التجربة المجانية. للاستمرار بالقناة يرجى الاشتراك.")
-            conn = sqlite3.connect('users.db')
-            c = conn.cursor()
-            c.execute("DELETE FROM users WHERE user_id=?", (user_id,))
-            conn.commit()
-            conn.close()
-        except:
-            pass
-
-# --- 4. واجهة البوت ---
+# --- 4. واجهة البوت والتعامل مع الأزرار ---
 def main_menu_keyboard():
     keyboard = [
         [InlineKeyboardButton("📊 اشتراك تحليلات SPX العالمية 📊", callback_data='menu_spx')],
@@ -81,7 +76,7 @@ def main_menu_keyboard():
     return InlineKeyboardMarkup(keyboard)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("مرحباً بك في بوت خدماتنا التقنية! 🚀\nالرجاء اختيار الخدمة المطلوبة:", reply_markup=main_menu_keyboard())
+    await update.message.reply_text("مرحباً بك في بوت عزيز! 🚀\nالرجاء اختيار الخدمة المطلوبة:", reply_markup=main_menu_keyboard())
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -93,86 +88,30 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.edit_message_text("❌ عذراً، لقد استخدمت الفترة التجريبية مسبقاً.")
         else:
             add_user(user_id, 7)
-            # إنشاء رابط دعوة صالح لشخص واحد فقط
             invite_link = await context.bot.create_chat_invite_link(chat_id=CHANNEL_ID, member_limit=1)
             await query.edit_message_text(f"✅ تم تفعيل التجربة المجانية لـ 7 أيام.\nرابط الدخول للقناة:\n{invite_link.invite_link}")
 
-    elif query.data == 'menu_spx':
-        keyboard = [
-            [InlineKeyboardButton("شهر - 100 ريال", url=URLS["spx_1m"])],
-            [InlineKeyboardButton("3 شهور - 279 ريال", url=URLS["spx_3m"])],
-            [InlineKeyboardButton("6 شهور - 549 ريال", url=URLS["spx_6m"])],
-            [InlineKeyboardButton("🔙 عودة للقائمة الرئيسية", callback_data='back_to_main')]
-        ]
-        await query.edit_message_text("اختر مدة اشتراك تحليل SPX:", reply_markup=InlineKeyboardMarkup(keyboard))
-
-    elif query.data == 'menu_indicators':
-        keyboard = [
-            [InlineKeyboardButton("Aziz pro مؤشر - 399 ريال", url=URLS["ind_1m"])],
-            [InlineKeyboardButton("🔙 عودة للقائمة الرئيسية", callback_data='back_to_main')]
-        ]
-        await query.edit_message_text("اختر مدة اشتراك المؤشرات الفنية:", reply_markup=InlineKeyboardMarkup(keyboard))
-
-    elif query.data == 'verify_payment':
-        context.user_data['waiting_for_order'] = True
-        keyboard = [[InlineKeyboardButton("❌ إلغاء", callback_data='back_to_main')]]
-        await query.edit_message_text("أرسل رقم الطلب من سلة للتحقق:", reply_markup=InlineKeyboardMarkup(keyboard))
-
     elif query.data == 'back_to_main':
-        context.user_data['waiting_for_order'] = False
         await query.edit_message_text("الرجاء اختيار الخدمة المطلوبة:", reply_markup=main_menu_keyboard())
 
-# --- 5. التحقق من سلة ---
-def verify_salla_order(order_id):
-    # تم تعديل السطر ده عشان يقبل التوكن بتاعك مباشرة
-    headers = {
-        'Authorization': f'Bearer {SALLA_TOKEN}',
-        'Content-Type': 'application/json'
-    }
-    try:
-        response = requests.get(f'https://api.salla.dev/admin/v2/orders/{order_id}', headers=headers)
-        if response.status_code == 200:
-            order_data = response.json()
-            status = order_data['data']['status']['id']
-            # التحقق إذا كان الطلب "مكتمل" أو "تم التوصيل"
-            return status in ['completed', 'delivered']
-        return False
-    except Exception as e:
-        logging.error(f"Error Salla API: {e}")
-        return False
-
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if context.user_data.get('waiting_for_order'):
-        order_id = update.message.text.strip()
-        if not order_id.isdigit():
-            await update.message.reply_text("الرجاء إرسال رقم طلب صحيح (أرقام فقط).")
-            return
-        
-        await update.message.reply_text("جاري التحقق من حالة الطلب في سلة... ⏳")
-        
-        if verify_salla_order(order_id):
-            # إنشاء رابط دعوة جديد للعميل اللي دفع
-            invite_link = await context.bot.create_chat_invite_link(chat_id=CHANNEL_ID, member_limit=1)
-            await update.message.reply_text(f"✅ تم التحقق بنجاح! اشتراكك مفعل.\nتفضل رابط القناة:\n{invite_link.invite_link}")
-        else:
-            await update.message.reply_text("❌ لم نجد طلباً مكتمل الدفع بهذا الرقم. تأكد من حالة الطلب في المتجر أو تواصل مع الدعم.")
-        
-        context.user_data['waiting_for_order'] = False
+# --- 5. تشغيل السيرفر والبوت معاً ---
+def run_flask():
+    port = int(os.environ.get("PORT", 8080))
+    flask_app.run(host='0.0.0.0', port=port)
 
 def main():
     init_db()
-    app = Application.builder().token(TOKEN).build()
+    global tg_application
+    tg_application = Application.builder().token(TOKEN).build()
     
-    # تشغيل فحص انتهاء الصلاحية كل ساعة
-    if app.job_queue:
-        app.job_queue.run_repeating(check_expirations, interval=3600, first=10)
-
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CallbackQueryHandler(button_handler))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    tg_application.add_handler(CommandHandler("start", start))
+    tg_application.add_handler(CallbackQueryHandler(button_handler))
     
-    print("البوت يعمل الآن...")
-    app.run_polling()
+    # تشغيل Flask في خلفية الكود
+    threading.Thread(target=run_flask, daemon=True).start()
+    
+    print("🚀 البوت والويب هوك يعملان الآن...")
+    tg_application.run_polling()
 
 if __name__ == '__main__':
     main()
