@@ -5,7 +5,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
 
 # --- 1. الإعدادات ---
-TOKEN = '8232201715:AAFEvsg1y3tD8_CXOXx0NT2CsdZU_jw9sN8'
+TOKEN = '8232201715:AAGl48TZoAkcCCWawNC0s_A82frXKX56gUU'
 CHANNEL_ID = '-1003953368081'
 ADMIN_ID = 5332562107  # تأكد من وضع آيدي الادمن الصحيح هنا
 
