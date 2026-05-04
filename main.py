@@ -1,97 +1,52 @@
+import logging
 import os
 import asyncio
 import threading
-from flask import Flask, request, jsonify
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Bot
+from datetime import datetime
+from flask import Flask
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 
-# --- 1. الإعدادات الأساسية (تأكد من وجودها في Railway Variables) ---
-TOKEN = os.getenv("BOT_TOKEN")
-ADMIN_ID = os.getenv("ADMIN_ID")
-DATA_CHANNEL_ID = "--1003846832363"
+# --- 1. الإعدادات والمعرفات المحدثة ---
+TOKEN = os.getenv("TOKEN") or os.getenv("BOT_TOKEN")
+ADMIN_ID = 5332562107  # آيدي فيصل
+
+# معرفات القنوات المحدثة
+PRIVATE_CHANNEL_ID = '-1003953368081'  # القناة الخاصة
+FREE_CHANNEL_URL = 'https://t.me/c/3907521588/1' # القناة المجانية
+REQUESTS_CHANNEL_ID = '-1003846832363' # قناة الطلبات (المحدث)
+ARCHIVE_CHANNEL_ID = '-1003989339996'  # قناة الأرشيف (المحدث)
+
 PORT = int(os.environ.get('PORT', 8080))
 
-# ملف قاعدة البيانات (Database) لضمان عدم ضياع الأرقام عند تحديث البوت
-DB_FILE = "orders_db.txt"
-
-def save_to_db(mobile, name):
-    """حفظ بيانات العميل في ملف نصي بصيغة دائمية"""
-    with open(DB_FILE, "a", encoding="utf-8") as f:
-        f.write(f"{mobile}|{name}\n")
-
-def search_in_db(mobile):
-    """البحث عن رقم الجوال في قاعدة البيانات"""
-    if not os.path.exists(DB_FILE):
-        return None
-    with open(DB_FILE, "r", encoding="utf-8") as f:
-        for line in f:
-            if "|" in line:
-                m, n = line.strip().split("|")
-                if m == str(mobile):
-                    return n
-    return None
-
-# روابط القنوات والدعم
 URLS = {
     "spx_1m": "https://salla.sa/AZIZSPX/WzbWgKA",
     "spx_3m": "https://salla.sa/AZIZSPX/xvnbrQb",
     "spx_6m": "https://salla.sa/AZIZSPX/azdOBBK",
     "ind_1m": "https://salla.sa/AZIZSPX/EXKwOwZ",
-    "whatsapp_support": "https://wa.me/966541234567", # رقم فيصل
-    "free_channel": "https://t.me/c/3907521588/1",
-    "private_channel": "https://t.me/c/3953368081/1"
+    "whatsapp_support": "https://wa.me/9665XXXXXXXX" # ⚠️ ضع رقم واتساب فيصل هنا
 }
 
-app = Flask(__name__)
-bot_instance = Bot(token=TOKEN) if TOKEN else None
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+app_flask = Flask(__name__)
 
-# --- 2. واجهة البوت (الأزرار) ---
+# --- 2. واجهة البوت الرئيسية ---
 def main_menu_keyboard():
     keyboard = [
         [InlineKeyboardButton("📊 اشتراك تحليلات SPX العالمية", callback_data='menu_spx')],
         [InlineKeyboardButton("📈 اشتراك المؤشرات الفنية الخاصة", callback_data='menu_indicators')],
-        [InlineKeyboardButton("✅ تم الدفع (استلام الرابط)", callback_data='check_payment')],
-        [InlineKeyboardButton("🆓 القناة المجانية (مدى الحياة)", url=URLS["free_channel"])],
+        [InlineKeyboardButton("🆓 القناة المجانية (مدى الحياة)", url=FREE_CHANNEL_URL)],
         [InlineKeyboardButton("💬 الدعم الفني (واتساب)", url=URLS["whatsapp_support"])]
     ]
     return InlineKeyboardMarkup(keyboard)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "مرحباً بك في بوت عزيز التجاري! 🚀\nبعد إتمام الدفع من المتجر، اضغط على 'تم الدفع' لاستلام رابط القناة.",
+        "مرحباً بك في بوت عزيز! 🚀\nاختر خدمتك المفضلة من الأزرار أدناه:",
         reply_markup=main_menu_keyboard()
     )
 
-# --- 3. معالج الويب هوك (Salla Webhook) ---
-@app.route('/webhook', methods=['POST'])
-def salla_webhook():
-    try:
-        data = request.json
-        event = data.get('event')
-        
-        # التقاط كافة أحداث الدفع الممكنة من سلة
-        if event in ['subscription.created', 'subscription.charge.succeeded', 'order.paid', 'order.status.updated']:
-            order_data = data.get('data', {})
-            customer = order_data.get('customer', {})
-            mobile = str(customer.get('mobile', '')).replace('+', '').strip()
-            name = f"{customer.get('first_name', '')} {customer.get('last_name', '')}".strip()
-            
-            if mobile:
-                save_to_db(mobile, name)
-                # إرسال تنبيه فوري لقناة الأرشيف
-                msg = f"💰 **تأكيد عملية دفع**\n👤 العميل: {name}\n📱 الجوال: `{mobile}`\n📝 الحدث: {event}"
-                if bot_instance:
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                    loop.run_until_complete(bot_instance.send_message(chat_id=DATA_CHANNEL_ID, text=msg))
-                    loop.close()
-                
-        return jsonify({'status': 'success'}), 200
-    except Exception as e:
-        print(f"Webhook Error: {e}")
-        return jsonify({'status': 'error', 'msg': str(e)}), 500
-
-# --- 4. معالج الأزرار ---
+# --- 3. معالجة الضغط على الأزرار ---
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     data = query.data
@@ -99,57 +54,81 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if data == 'menu_spx':
         keyboard = [
-            [InlineKeyboardButton("🗓️ باقة شهر", url=URLS["spx_1m"])],
-            [InlineKeyboardButton("🗓️ 3 شهور", url=URLS["spx_3m"])],
-            [InlineKeyboardButton("🗓️ 6 شهور", url=URLS["spx_6m"])],
-            [InlineKeyboardButton("🔙 عودة", callback_data='back_main')]
+            [InlineKeyboardButton("شهر - 100 ريال", url=URLS["spx_1m"])],
+            [InlineKeyboardButton("3 شهور - 279 ريال", url=URLS["spx_3m"])],
+            [InlineKeyboardButton("6 شهور - 549 ريال", url=URLS["spx_6m"])],
+            [InlineKeyboardButton("✅ أرسل إثبات الدفع", callback_data='upload_proof')],
+            [InlineKeyboardButton("🔙 عودة", callback_data='back_to_main')]
         ]
-        await query.edit_message_text("اختر باقة اشتراك SPX:", reply_markup=InlineKeyboardMarkup(keyboard))
-    
+        await query.edit_message_text("اختر مدة الاشتراك للدفع عبر سلة، ثم أرسل الإثبات:", reply_markup=InlineKeyboardMarkup(keyboard))
+
     elif data == 'menu_indicators':
         keyboard = [
-            [InlineKeyboardButton("📈 مؤشر Aziz Pro", url=URLS["ind_1m"])],
-            [InlineKeyboardButton("🔙 عودة", callback_data='back_main')]
+            [InlineKeyboardButton("Aziz pro مؤشر - 399 ريال", url=URLS["ind_1m"])],
+            [InlineKeyboardButton("✅ أرسل إثبات الدفع", callback_data='upload_proof')],
+            [InlineKeyboardButton("🔙 عودة", callback_data='back_to_main')]
         ]
-        await query.edit_message_text("اشتراك المؤشرات الخاصة:", reply_markup=InlineKeyboardMarkup(keyboard))
+        await query.edit_message_text("ادفع عبر الرابط ثم أرسل الإثبات للمراجعة اليدوية:", reply_markup=InlineKeyboardMarkup(keyboard))
 
-    elif data == 'check_payment':
-        await query.message.reply_text("أرسل الآن رقم الجوال الذي استخدمته في سلة (بدون +) للتحقق:")
+    elif data == 'upload_proof':
+        context.user_data['waiting_for_proof'] = True
+        await query.edit_message_text("من فضلك أرسل الآن صورة الإيصال (Screenshot) أو رقم الطلب لفيصل:")
 
-    elif data == 'back_main':
-        await query.edit_message_text("القائمة الرئيسية:", reply_markup=main_menu_keyboard())
+    elif data == 'back_to_main':
+        context.user_data['waiting_for_proof'] = False
+        await query.edit_message_text("اختر خدمتك المفضلة:", reply_markup=main_menu_keyboard())
 
-# --- 5. معالج الرسائل (التحقق من الدفع) ---
-async def handle_user_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text.strip().replace('+', '')
-    
-    # البحث في الـ Database
-    name = search_in_db(text)
-    
-    if name:
-        await update.message.reply_text(
-            f"✅ أهلاً {name}! تم التأكد من اشتراكك بنجاح.\n\n"
-            f"تفضل رابط القناة الخاصة:\n{URLS['private_channel']}"
-        )
-    else:
-        await update.message.reply_text(
-            "❌ عذراً، هذا الرقم غير مسجل في قائمة المدفوعات الحالية.\n\n"
-            "تأكد من كتابة الرقم بشكل صحيح (مثال: 9665xxxx)، أو انتظر دقيقة بعد الدفع لتحديث البيانات."
-        )
+    elif data.startswith(('approve_', 'reject_')):
+        if query.from_user.id != ADMIN_ID: return
+        action, cust_id = data.split('_')
+        cust_id = int(cust_id)
 
-# --- 6. التشغيل النهائي ---
+        if action == 'approve':
+            # إنشاء رابط دعوة صالح لشخص واحد فقط
+            invite = await context.bot.create_chat_invite_link(chat_id=PRIVATE_CHANNEL_ID, member_limit=1)
+            await context.bot.send_message(chat_id=cust_id, text=f"🎉 تم تأكيد اشتراكك بنجاح!\nتفضل رابط الانضمام للقناة الخاصة:\n{invite.invite_link}")
+            await query.edit_message_text(f"✅ تم قبول العميل {cust_id} وإرسال الرابط.")
+            
+            # تسجيل البيانات في قناة الأرشيف المحدثة
+            archive_msg = f"📝 **سجل مبيعات**\n👤 العميل ID: `{cust_id}`\n📅 التاريخ: {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+            await context.bot.send_message(chat_id=ARCHIVE_CHANNEL_ID, text=archive_msg)
+        else:
+            await context.bot.send_message(chat_id=cust_id, text="❌ نعتذر، لم يتم تأكيد الدفع. يرجى مراجعة الدعم الفني.")
+            await query.edit_message_text(f"❌ تم رفض طلب العميل {cust_id}.")
+
+# --- 4. استقبال الإثباتات وتوجيهها لقناة الطلبات المحدثة ---
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if context.user_data.get('waiting_for_proof'):
+        user = update.effective_user
+        admin_kb = [
+            [InlineKeyboardButton("✅ قبول", callback_data=f"approve_{user.id}"),
+             InlineKeyboardButton("❌ رفض", callback_data=f"reject_{user.id}")]
+        ]
+        
+        caption = f"🔔 إثبات دفع جديد\n👤 العميل: {user.first_name}\n🆔 الآيدي: `{user.id}`"
+        
+        if update.message.photo:
+            await context.bot.send_photo(chat_id=REQUESTS_CHANNEL_ID, photo=update.message.photo[-1].file_id, caption=caption, reply_markup=InlineKeyboardMarkup(admin_kb))
+        else:
+            await context.bot.send_message(chat_id=REQUESTS_CHANNEL_ID, text=f"{caption}\n📝 المحتوى: {update.message.text}", reply_markup=InlineKeyboardMarkup(admin_kb))
+        
+        await update.message.reply_text("⏳ تم إرسال إثباتك بنجاح. سيتم الرد عليك هنا فور مراجعة فيصل للطلب.")
+        context.user_data['waiting_for_proof'] = False
+
+# --- 5. التشغيل ---
+@app_flask.route('/')
+def home(): return "Bot is Online"
+
 def main():
-    # تشغيل سيرفر Flask للويب هوك في الخلفية
-    threading.Thread(target=lambda: app.run(host='0.0.0.0', port=PORT), daemon=True).start()
+    if not TOKEN: return
+    threading.Thread(target=lambda: app_flask.run(host='0.0.0.0', port=PORT), daemon=True).start()
     
-    # تشغيل البوت (Polling)
     application = Application.builder().token(TOKEN).build()
-    
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CallbackQueryHandler(button_handler))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_user_input))
+    application.add_handler(MessageHandler(filters.PHOTO | filters.TEXT & ~filters.COMMAND, handle_message))
     
-    print("Bot is starting...")
+    print("🚀 البوت يعمل الآن بالقنوات الجديدة!")
     application.run_polling()
 
 if __name__ == '__main__':
