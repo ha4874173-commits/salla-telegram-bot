@@ -7,15 +7,15 @@ from flask import Flask
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 
-# --- 1. الإعدادات والمعرفات المحدثة ---
+# --- 1. الإعدادات والمعرفات ---
 TOKEN = os.getenv("TOKEN") or os.getenv("BOT_TOKEN")
 ADMIN_ID = 5332562107  # آيدي فيصل
 
-# معرفات القنوات المحدثة
+# معرفات القنوات
 PRIVATE_CHANNEL_ID = '-1003953368081'  # القناة الخاصة
 FREE_CHANNEL_URL = 'https://t.me/c/3907521588/1' # القناة المجانية
-REQUESTS_CHANNEL_ID = '-1003846832363' # قناة الطلبات (المحدث)
-ARCHIVE_CHANNEL_ID = '-1003989339996'  # قناة الأرشيف (المحدث)
+REQUESTS_CHANNEL_ID = '-1003846832363' # قناة الطلبات
+ARCHIVE_CHANNEL_ID = '-1003989339996'  # قناة الأرشيف
 
 PORT = int(os.environ.get('PORT', 8080))
 
@@ -84,19 +84,40 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         cust_id = int(cust_id)
 
         if action == 'approve':
-            # إنشاء رابط دعوة صالح لشخص واحد فقط
+            # 1. إنشاء رابط الدعوة
             invite = await context.bot.create_chat_invite_link(chat_id=PRIVATE_CHANNEL_ID, member_limit=1)
-            await context.bot.send_message(chat_id=cust_id, text=f"🎉 تم تأكيد اشتراكك بنجاح!\nتفضل رابط الانضمام للقناة الخاصة:\n{invite.invite_link}")
-            await query.edit_message_text(f"✅ تم قبول العميل {cust_id} وإرسال الرابط.")
             
-            # تسجيل البيانات في قناة الأرشيف المحدثة
-            archive_msg = f"📝 **سجل مبيعات**\n👤 العميل ID: `{cust_id}`\n📅 التاريخ: {datetime.now().strftime('%Y-%m-%d %H:%M')}"
-            await context.bot.send_message(chat_id=ARCHIVE_CHANNEL_ID, text=archive_msg)
+            # 2. إرسال الرابط للعميل
+            await context.bot.send_message(chat_id=cust_id, text=f"🎉 تم تأكيد اشتراكك بنجاح!\nتفضل رابط الانضمام للقناة الخاصة:\n{invite.invite_link}")
+            
+            # 3. محاولة الحصول على اسم العميل للأرشفة
+            try:
+                member = await context.bot.get_chat(cust_id)
+                full_name = f"{member.first_name} {member.last_name if member.last_name else ''}"
+                username = f"@{member.username}" if member.username else "بدون يوزر"
+            except:
+                full_name = "مستخدم"
+                username = "غير متاح"
+
+            # 4. إرسال البيانات لقناة الأرشيف (هنا التعديل لضمان وصول الداتا)
+            archive_msg = (
+                f"✅ **تم قبول مشترك جديد**\n\n"
+                f"👤 **الاسم:** {full_name}\n"
+                f"🆔 **الآيدي:** `{cust_id}`\n"
+                f"🔗 **اليوزر:** {username}\n"
+                f"📅 **تاريخ التفعيل:** {datetime.now().strftime('%Y-%m-%d %H:%M')}\n"
+                f"⚙️ **الحالة:** تم الإرسال بنجاح"
+            )
+            await context.bot.send_message(chat_id=ARCHIVE_CHANNEL_ID, text=archive_msg, parse_mode='Markdown')
+            
+            # 5. تحديث رسالة قناة الطلبات
+            await query.edit_message_text(f"✅ تم قبول {full_name} ({cust_id}) وأرشفة البيانات.")
+            
         else:
             await context.bot.send_message(chat_id=cust_id, text="❌ نعتذر، لم يتم تأكيد الدفع. يرجى مراجعة الدعم الفني.")
             await query.edit_message_text(f"❌ تم رفض طلب العميل {cust_id}.")
 
-# --- 4. استقبال الإثباتات وتوجيهها لقناة الطلبات المحدثة ---
+# --- 4. استقبال الإثباتات وتوجيهها لقناة الطلبات ---
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.user_data.get('waiting_for_proof'):
         user = update.effective_user
@@ -128,7 +149,7 @@ def main():
     application.add_handler(CallbackQueryHandler(button_handler))
     application.add_handler(MessageHandler(filters.PHOTO | filters.TEXT & ~filters.COMMAND, handle_message))
     
-    print("🚀 البوت يعمل الآن بالقنوات الجديدة!")
+    print("🚀 البوت يعمل الآن.. الداتا ستنتقل للأرشيف فور القبول.")
     application.run_polling()
 
 if __name__ == '__main__':
