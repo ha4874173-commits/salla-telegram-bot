@@ -4,75 +4,106 @@ import threading
 from datetime import datetime, timedelta
 from flask import Flask, request, jsonify
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Bot
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 
-# --- 1. الإعدادات والمعرفات ---
-# تأكد من وضع TOKEN و ADMIN_ID في Railway Variables
+# --- 1. الإعدادات ---
 TOKEN = os.getenv("TOKEN") or os.getenv("BOT_TOKEN")
-ADMIN_ID = os.getenv("ADMIN_ID") 
-
-# آيدي القنوات المستخرج من روابطك
+ADMIN_ID = os.getenv("ADMIN_ID") # آيدي فيصل
 DATA_CHANNEL_ID = "-1003970062260" # قناة الأرشيف
 PORT = int(os.environ.get('PORT', 8080))
 
-# 📍 الروابط الصحيحة والمباشرة
+# 📍 تم تحديث رابط الدعم الفني لواتساب
 URLS = {
-    # روابط سلة
-    "spx_1m": "https://salla.sa/AZIZSPX/WzbWgKA",
-    "spx_3m": "https://salla.sa/AZIZSPX/xvnbrQb",
-    "spx_6m": "https://salla.sa/AZIZSPX/azdOBBK",
-    "ind_1m": "https://salla.sa/AZIZSPX/EXKwOwZ",
-    "support": "https://t.me/ess942",
-    
-    # روابط القنوات المباشرة (تم تحويلها لروابط تليجرام)
-    "free_channel": "https://t.me/c/3907521588/1", # القناة المجانية
-    "private_channel": "https://t.me/c/3953368081/1" # القناة الخاصة
+    "whatsapp_support": "https://wa.me/0554852681", # ⚠️ ضع رقم واتساب فيصل هنا (مثال: 966500000000)
+    "free_channel": "https://t.me/c/3907521588/1",
+    "private_channel": "https://t.me/c/3953368081/1"
 }
 
 app = Flask(__name__)
 bot_instance = Bot(token=TOKEN) if TOKEN else None
 
-# --- 2. أزرار الواجهة الرئيسية ---
+# --- 2. واجهة البوت ---
 def main_menu_keyboard():
     keyboard = [
-        [InlineKeyboardButton("📊 اشتراك تحليلات SPX العالمية", callback_data='menu_spx')],
-        [InlineKeyboardButton("📈 اشتراك المؤشرات الفنية الخاصة", callback_data='menu_indicators')],
-        [InlineKeyboardButton("🆓 القناة المجانية (مدى الحياة)", url=URLS["free_channel"])],
-        [InlineKeyboardButton("💬 التواصل مع الدعم الفني", url=URLS["support"])]
+        [InlineKeyboardButton("📊 اشتراك التحليلات (سلة)", url="https://salla.sa/AZIZSPX")],
+        [InlineKeyboardButton("✅ تأكيد اشتراك (إرسال فاتورة/صورة)", callback_data='verify_sub')],
+        [InlineKeyboardButton("🆓 القناة المجانية", url=URLS["free_channel"])],
+        [InlineKeyboardButton("💬 الدعم الفني (واتساب)", url=URLS["whatsapp_support"])]
     ]
     return InlineKeyboardMarkup(keyboard)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "مرحباً بك في بوت عزيز التجاري! 🚀\nاستخدم الأزرار أدناه للوصول لخدماتنا:",
+        "مرحباً بك في نظام عزيز المطور! 🚀\nيمكنك الاشتراك عبر سلة أو إرسال إثبات الدفع للمراجعة اليدوية:",
         reply_markup=main_menu_keyboard()
     )
 
-async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# --- 3. نظام المراجعة اليدوية (إرسال الإثبات) ---
+async def handle_verification_request(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # نتحقق أن المرسل ليس الأدمن نفسه لتجنب التكرار
+    if str(update.effective_user.id) == str(ADMIN_ID):
+        return
+
+    user = update.effective_user
+    keyboard = [
+        [InlineKeyboardButton("✅ قبول وإرسال الرابط", callback_data=f"approve_{user.id}")],
+        [InlineKeyboardButton("❌ رفض الطلب", callback_data=f"reject_{user.id}")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    # إرسال البيانات لفيصل للمراجعة
+    if update.message.photo:
+        await context.bot.send_photo(
+            chat_id=ADMIN_ID, 
+            photo=update.message.photo[-1].file_id, 
+            caption=f"🔔 طلب تفعيل يدوي من: {user.first_name}\nآيدي: `{user.id}`", 
+            reply_markup=reply_markup
+        )
+    else:
+        await context.bot.send_message(
+            chat_id=ADMIN_ID, 
+            text=f"🔔 طلب تفعيل يدوي من: {user.first_name}\nالرسالة: {update.message.text}\nآيدي: `{user.id}`", 
+            reply_markup=reply_markup
+        )
+    
+    await update.message.reply_text("✅ تم إرسال إثباتك للإدارة. انتظر الرد هنا فور المراجعة.")
+
+# --- 4. معالجة قرار الأدمن (قبول/رفض) ---
+async def admin_decision_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     data = query.data
     await query.answer()
 
-    if data == 'menu_spx':
-        keyboard = [
-            [InlineKeyboardButton("🗓️ باقة شهر - 100 ريال", url=URLS["spx_1m"])],
-            [InlineKeyboardButton("🗓️ باقة 3 شهور - 279 ريال", url=URLS["spx_3m"])],
-            [InlineKeyboardButton("🗓️ باقة 6 شهور - 549 ريال", url=URLS["spx_6m"])],
-            [InlineKeyboardButton("🔙 عودة", callback_data='back_to_main')]
-        ]
-        await query.edit_message_text("اختر مدة الاشتراك المناسبة لك عبر سلة:", reply_markup=InlineKeyboardMarkup(keyboard))
-    
-    elif data == 'menu_indicators':
-        keyboard = [
-            [InlineKeyboardButton("📈 مؤشر Aziz Pro - 399 ريال", url=URLS["ind_1m"])],
-            [InlineKeyboardButton("🔙 عودة", callback_data='back_to_main')]
-        ]
-        await query.edit_message_text("اشتراك المؤشرات الخاصة:", reply_markup=InlineKeyboardMarkup(keyboard))
+    action, user_id = data.split("_")
 
-    elif data == 'back_to_main':
-        await query.edit_message_text("اختر خدمتك المفضلة:", reply_markup=main_menu_keyboard())
+    if action == "approve":
+        # إرسال الرابط تلقائياً للعميل
+        try:
+            await context.bot.send_message(
+                chat_id=user_id, 
+                text=f"🎉 تم التحقق من طلبك بنجاح!\nتفضل رابط الانضمام للقناة الخاصة:\n{URLS['private_channel']}"
+            )
+            # تحديث رسالة الإدارة
+            status_text = "✅ تم القبول وإرسال الرابط للعميل."
+            # تسجيل في الأرشيف
+            await context.bot.send_message(chat_id=DATA_CHANNEL_ID, text=f"✅ تفعيل يدوي ناجح للعميل {user_id}")
+        except Exception as e:
+            status_text = f"⚠️ تمت الموافقة ولكن فشل إرسال الرسالة للعميل: {e}"
 
-# --- 3. نظام الويب هوك (تأكيد الدفع التلقائي) ---
+    elif action == "reject":
+        try:
+            await context.bot.send_message(chat_id=user_id, text="❌ نعتذر، لم يتم التأكد من بيانات الدفع. يرجى التواصل مع الدعم الفني.")
+            status_text = "❌ تم رفض الطلب."
+        except:
+            status_text = "❌ تم الرفض (العميل أغلق البوت)."
+
+    # تعديل الرسالة عند فيصل لتوضيح الحالة
+    if query.message.photo:
+        await query.edit_message_caption(caption=query.message.caption + f"\n\n{status_text}")
+    else:
+        await query.edit_message_text(text=query.message.text + f"\n\n{status_text}")
+
+# --- 5. نظام الويب هوك (سلة) ---
 @app.route('/webhook', methods=['POST'])
 def salla_webhook():
     try:
@@ -80,45 +111,30 @@ def salla_webhook():
         if data.get('event') in ['subscription.created', 'subscription.charged']:
             customer = data['data'].get('customer', {})
             name = f"{customer.get('first_name')} {customer.get('last_name')}"
-            mobile = customer.get('mobile', 'N/A')
-            expiry = (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d')
-            
-            # الرسالة التي تذهب للأرشيف
-            log_text = (
-                f"📝 **تأكيد اشتراك جديد**\n"
-                f"👤 العميل: {name}\n"
-                f"📱 الجوال: `{mobile}`\n"
-                f"📅 تاريخ الانتهاء: {expiry}\n"
-                f"🔗 رابط القناة الخاصة لإرساله له:\n{URLS['private_channel']}"
-            )
-
+            msg = f"💰 **دفع مؤكد من سلة**\n👤 العميل: {name}\n📱 الجوال: {customer.get('mobile', 'N/A')}"
             if bot_instance:
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
-                # إرسال لقناة الأرشيف
-                loop.run_until_complete(bot_instance.send_message(chat_id=DATA_CHANNEL_ID, text=log_text))
-                # تنبيه فيصل
-                loop.run_until_complete(bot_instance.send_message(chat_id=ADMIN_ID, text=f"🔔 إشعار: تم دفع اشتراك جديد من {name}"))
+                loop.run_until_complete(bot_instance.send_message(chat_id=DATA_CHANNEL_ID, text=msg))
+                loop.run_until_complete(bot_instance.send_message(chat_id=ADMIN_ID, text=msg))
                 loop.close()
         return jsonify({'status': 'success'}), 200
     except:
         return jsonify({'status': 'error'}), 500
 
-# --- 4. تشغيل النظام المزدوج ---
+# --- 6. التشغيل النهائي ---
 def main():
-    if not TOKEN:
-        print("❌ TOKEN missing!")
-        return
+    if not TOKEN: return
 
-    # تشغيل Flask في الخلفية
     threading.Thread(target=lambda: app.run(host='0.0.0.0', port=PORT), daemon=True).start()
 
-    # تشغيل بوت تليجرام
     application = Application.builder().token(TOKEN).build()
     application.add_handler(CommandHandler("start", start))
-    application.add_handler(CallbackQueryHandler(button_handler))
+    application.add_handler(CallbackQueryHandler(admin_decision_handler, pattern="^(approve|reject)_"))
+    # استقبال الصور والنصوص للمراجعة
+    application.add_handler(MessageHandler(filters.PHOTO | filters.TEXT & ~filters.COMMAND, handle_verification_request))
     
-    print("🚀 البوت والويب هوك يعملان الآن بالروابط المباشرة...")
+    print("🚀 البوت يعمل الآن بنظام (سلة + المراجعة اليدوية + واتساب)")
     application.run_polling()
 
 if __name__ == '__main__':
