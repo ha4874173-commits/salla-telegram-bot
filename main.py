@@ -18,8 +18,8 @@ URLS = {
     "spx_6m": "https://salla.sa/AZIZSPX/azdOBBK",
     "ind_1m": "https://salla.sa/AZIZSPX/EXKwOwZ",
     "support": "https://t.me/ess942",
-    "free_channel": "https://t.me/#-3907521588", # ضع رابط قناتك المجانية هنا
-    "private_channel": "https://t.me/#-3953368081" # ضع رابط قناتك الخاصة هنا
+    "free_channel": "https://t.me/-3907521588", # ضع رابط قناتك المجانية هنا
+    "private_channel": "https://t.me/-3953368081" # ضع رابط قناتك الخاصة هنا
 }
 
 app = Flask(__name__)
