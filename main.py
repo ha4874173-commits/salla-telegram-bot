@@ -9,7 +9,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Mess
 
 # --- 1. الإعدادات والمعرفات ---
 TOKEN = os.getenv("TOKEN") or os.getenv("BOT_TOKEN")
-ADMIN_ID = 5332562107  # آيدي فيصل
+ADMIN_ID = 5332562107  # 
 
 # معرفات القنوات
 PRIVATE_CHANNEL_ID = '-1003953368081'  # القناة الخاصة
@@ -24,7 +24,7 @@ URLS = {
     "spx_3m": "https://salla.sa/AZIZSPX/xvnbrQb",
     "spx_6m": "https://salla.sa/AZIZSPX/azdOBBK",
     "ind_1m": "https://salla.sa/AZIZSPX/EXKwOwZ",
-    "whatsapp_support": "https://wa.me/9665XXXXXXXX" # ⚠️ ضع رقم واتساب فيصل هنا
+    "whatsapp_support": "https://wa.me/0554852681" # 
 }
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -33,10 +33,10 @@ app_flask = Flask(__name__)
 # --- 2. واجهة البوت الرئيسية ---
 def main_menu_keyboard():
     keyboard = [
-        [InlineKeyboardButton("📊 اشتراك تحليلات SPX العالمية", callback_data='menu_spx')],
+        [InlineKeyboardButton("📊 اشتراك تحليلات SPX الخاصه", callback_data='menu_spx')],
         [InlineKeyboardButton("📈 اشتراك المؤشرات الفنية الخاصة", callback_data='menu_indicators')],
-        [InlineKeyboardButton("🆓 القناة المجانية (مدى الحياة)", url=FREE_CHANNEL_URL)],
-        [InlineKeyboardButton("💬 الدعم الفني (واتساب)", url=URLS["whatsapp_support"])]
+        [InlineKeyboardButton("🆓 القناة المجانية", url=FREE_CHANNEL_URL)],
+        [InlineKeyboardButton("💬 الدعم الفني ", url=URLS["whatsapp_support"])]
     ]
     return InlineKeyboardMarkup(keyboard)
 
@@ -72,7 +72,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data == 'upload_proof':
         context.user_data['waiting_for_proof'] = True
-        await query.edit_message_text("من فضلك أرسل الآن صورة الإيصال (Screenshot) أو رقم الطلب لفيصل:")
+        await query.edit_message_text("من فضلك أرسل الآن صورة الإيصال (Screenshot) أو رقم الطلب :")
 
     elif data == 'back_to_main':
         context.user_data['waiting_for_proof'] = False
@@ -133,7 +133,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             await context.bot.send_message(chat_id=REQUESTS_CHANNEL_ID, text=f"{caption}\n📝 المحتوى: {update.message.text}", reply_markup=InlineKeyboardMarkup(admin_kb))
         
-        await update.message.reply_text("⏳ تم إرسال إثباتك بنجاح. سيتم الرد عليك هنا فور مراجعة فيصل للطلب.")
+        await update.message.reply_text("⏳ تم إرسال إثباتك بنجاح. سيتم الرد عليك هنا فور مراجعة سلة للطلب.")
         context.user_data['waiting_for_proof'] = False
 
 # --- 5. التشغيل ---
