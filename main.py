@@ -8,7 +8,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Mess
 # --- 1. الإعدادات ---
 TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = os.getenv("ADMIN_ID")
-DATA_CHANNEL_ID = "-1003970062260"
+DATA_CHANNEL_ID = "-1003846832363"
 PORT = int(os.environ.get('PORT', 8080))
 
 # مخزن مؤقت لحفظ بيانات العملاء (رقم الجوال : الاسم)
