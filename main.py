@@ -8,7 +8,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Mess
 
 # --- 1. الإعدادات (مطابقة لبيانات Railway) ---
 TOKEN = os.getenv("BOT_TOKEN") 
-ADMIN_ID = os.getenv("ADMIN_ID") 
+ADMIN_ID = "5332562107"
 DATA_CHANNEL_ID = "-1003970062260" 
 PORT = int(os.environ.get('PORT', 8080))
 
