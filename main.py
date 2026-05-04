@@ -6,7 +6,6 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
 
 # --- 1. الإعدادات الآمنة ---
-# يتم سحب التوكن من إعدادات السيرفر (Railway) وليس من الكود مباشرة لمنع السرقة
 TOKEN = os.getenv("BOT_TOKEN") 
 CHANNEL_ID = '-1003953368081'
 ADMIN_ID = 5332562107  # آيدي فيصل
@@ -50,7 +49,7 @@ def main_menu_keyboard():
     keyboard = [
         [InlineKeyboardButton("📊 اشتراك تحليلات SPX العالمية", callback_data='menu_spx')],
         [InlineKeyboardButton("📈 اشتراك المؤشرات الفنية الخاصة", callback_data='menu_indicators')],
-        [InlineKeyboardButton("🎁 تجربة مجانية (7 أيام) 🎁", callback_data='free_trial')],
+        [InlineKeyboardButton("🎁 القناة المجانية (7 أيام) 🎁", callback_data='free_trial')],
         [InlineKeyboardButton("💬 التواصل مع الدعم الفني", url=URLS["support"])]
     ]
     return InlineKeyboardMarkup(keyboard)
