@@ -7,9 +7,8 @@ from flask import Flask
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 
-# --- 1. الإعدادات والمعرفات ---
 TOKEN = os.getenv("TOKEN") or os.getenv("BOT_TOKEN")
-ADMIN_ID = 5332562107  # آيدي فيصل
+ADMIN_ID = 5332562107  #
 
 PRIVATE_CHANNEL_ID = '-1003953368081' 
 FREE_CHANNEL_URL = 'https://t.me/c/3907521588/1' 
@@ -23,13 +22,12 @@ URLS = {
     "spx_3m": "https://salla.sa/AZIZSPX/xvnbrQb",
     "spx_6m": "https://salla.sa/AZIZSPX/azdOBBK",
     "ind_1m": "https://salla.sa/AZIZSPX/EXKwOwZ",
-    "whatsapp_support": "https://wa.me/0554852681" 
+    "whatsapp_support": "https://wa.me/+966554852681" 
 }
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 app_flask = Flask(__name__)
 
-# --- 2. واجهة القائمة الرئيسية ---
 def main_menu_keyboard():
     keyboard = [
         [InlineKeyboardButton("📊 اشتراك تحليلات SPX الخاصة  ", callback_data='menu_spx')],
@@ -41,12 +39,17 @@ def main_menu_keyboard():
     return InlineKeyboardMarkup(keyboard)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # النص المطلوب تعديله في واجهة البوت
+    welcome_message = (
+        "مرحبًا بك في بوت AZIZ Trading\n\n"
+        "بوابتك إلى تداول أكثر احترافية وقرارات مبنية على تحليل دقيق لحركة السوق \n\n"
+        "اختر من الأزرار أدناه للوصول إلى خدماتنا وابدأ رحلتك الآن"
+    )
     await update.message.reply_text(
-        "مرحباً بك في بوت عزيز! 🚀\nاختر خدمتك المفضلة من الأزرار أدناه:",
+        welcome_message,
         reply_markup=main_menu_keyboard()
     )
 
-# --- 3. معالجة الأزرار والتنقل ---
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     data = query.data
@@ -74,7 +77,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
         await query.edit_message_text("المؤشرات الفنية 📈\nادفع عبر الرابط ثم أرسل الإثبات للمراجعة:", reply_markup=InlineKeyboardMarkup(keyboard))
 
-# بدء عملية رفع الإثبات
     elif data == 'upload_proof':
         context.user_data['waiting_for_proof'] = True
         keyboard = [[InlineKeyboardButton("🔙 إلغاء والعودة للرئيسية", callback_data='back_to_main')]]
@@ -83,7 +85,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
             
-    # --- نظام القبول وتحديد المدة (للأدمن فقط) ---
     elif data.startswith('approve_'):
         if query.from_user.id != ADMIN_ID:
             return
@@ -96,20 +97,16 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         duration_text = "شهر" if duration_days == 30 else f"{duration_days // 30} شهور"
 
         try:
-            # 1. إنشاء رابط دعوة
             invite = await context.bot.create_chat_invite_link(chat_id=PRIVATE_CHANNEL_ID, member_limit=1)
             
-            # 2. مراسلة العميل
             await context.bot.send_message(
                 chat_id=cust_id, 
                 text=f"🎉 تم تفعيل اشتراكك بنجاح لمدة ({duration_text})!\nرابط القناة الخاصة:\n{invite.invite_link}\n\nينتهي اشتراكك في تاريخ: {expiry_date}"
             )
 
-            # 3. جلب بيانات الاسم للأرشفة
             member = await context.bot.get_chat(cust_id)
             name = f"{member.first_name} {member.last_name or ''}"
 
-            # 4. التسجيل في قناة الأرشيف
             archive_msg = (
                 f"👤 **مشترك جديد مؤكد**\n"
                 f"━━━━━━━━━━━━━━━\n"
@@ -135,12 +132,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except:
             await query.edit_message_text(f"❌ تم الرفض (لكن تعذر مراسلة العميل).")
 
-# --- 4. استقبال الصور والرسائل من العملاء ---
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.user_data.get('waiting_for_proof'):
         user = update.effective_user
         
-        # أزرار تحكم الأدمن (في قناة الطلبات)
         admin_kb = [
             [InlineKeyboardButton("✅ قبول (30 يوم)", callback_data=f"approve_30_{user.id}")],
             [InlineKeyboardButton("✅ قبول (90 يوم)", callback_data=f"approve_90_{user.id}")],
@@ -158,7 +153,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⏳ تم إرسال إثباتك بنجاح. سيتم الرد عليك هنا فور مراجعة سلة للطلب.")
         context.user_data['waiting_for_proof'] = False
 
-# --- 5. تشغيل النظام ---
 @app_flask.route('/')
 def home(): 
     return "Bot is Online"
@@ -175,7 +169,7 @@ def main():
     application.add_handler(CallbackQueryHandler(button_handler))
     application.add_handler(MessageHandler(filters.PHOTO | filters.TEXT & ~filters.COMMAND, handle_message))
     
-    print("🚀 البوت يعمل الآن.. تم إصلاح أخطاء الأقواس.")
+    print("🚀 البوت يعمل الآن..")
     application.run_polling()
 
 if __name__ == '__main__':
