@@ -57,7 +57,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if data == 'back_to_main':
         context.user_data['waiting_for_proof'] = False
-        await query.edit_message_text("الرئيسية 🏠\nاختر خدمتك المفضلة:", reply_markup=main_menu_keyboard())
+        await query.edit_message_text("الرئيسية 🏠\n ااختر من الأزرار أدناه للوصول إلى خدماتنا وابدأ رحلتك الآن :", reply_markup=main_menu_keyboard())
 
     elif data == 'menu_spx':
         keyboard = [
