@@ -9,7 +9,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Mess
 
 # --- 1. الإعدادات والمعرفات ---
 TOKEN = os.getenv("TOKEN") or os.getenv("BOT_TOKEN")
-ADMIN_ID = 5332562107  
+ADMIN_ID = 5332562107  # آيدي فيصل
 
 PRIVATE_CHANNEL_ID = '-1003953368081' 
 FREE_CHANNEL_URL = 'https://t.me/c/3907521588/1' 
@@ -23,7 +23,7 @@ URLS = {
     "spx_3m": "https://salla.sa/AZIZSPX/xvnbrQb",
     "spx_6m": "https://salla.sa/AZIZSPX/azdOBBK",
     "ind_1m": "https://salla.sa/AZIZSPX/EXKwOwZ",
-    "whatsapp_support": "https://wa.me//0554852681" 
+    "whatsapp_support": "https://wa.me/0554852681" 
 }
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -32,11 +32,10 @@ app_flask = Flask(__name__)
 # --- 2. واجهة القائمة الرئيسية ---
 def main_menu_keyboard():
     keyboard = [
-        [InlineKeyboardButton("📊 اشتراك تحليلات SPX الخاصة", callback_data='menu_spx')],
-        [InlineKeyboardButton("📈 اشتراك المؤشرات الفنية ", callback_data='menu_indicators')],
-        [InlineKeyboardButton("🆓 القناة المجانية ", url=FREE_CHANNEL_URL)],
-        [InlineKeyboardButton("✅ أرسل إثبات الدفع ", callback_data='upload_proof')],
-        [InlineKeyboardButton("💬 الدعم الفني ", url=URLS["whatsapp_support"])]
+        [InlineKeyboardButton("📊 اشتراك تحليلات SPX العالمية", callback_data='menu_spx')],
+        [InlineKeyboardButton("📈 اشتراك المؤشرات الفنية الخاصة", callback_data='menu_indicators')],
+        [InlineKeyboardButton("🆓 القناة المجانية (مدى الحياة)", url=FREE_CHANNEL_URL)],
+        [InlineKeyboardButton("💬 الدعم الفني (واتساب)", url=URLS["whatsapp_support"])]
     ]
     return InlineKeyboardMarkup(keyboard)
 
@@ -64,7 +63,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("✅ أرسل إثبات الدفع", callback_data='upload_proof')],
             [InlineKeyboardButton("🔙 العودة", callback_data='back_to_main')]
         ]
-        await query.edit_message_text("باقات SPX 📊\nاختر المدة للدفع ثم أرسل الإثبات:", reply_markup=InlineKeyboardMarkup(keyboard))
+        await query.edit_message_text("باقات SPX 📊\nاختر المدة للدفع عبر سلة ثم أرسل الإثبات هنا:", reply_markup=InlineKeyboardMarkup(keyboard))
 
     elif data == 'menu_indicators':
         keyboard = [
@@ -72,73 +71,79 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("✅ أرسل إثبات الدفع", callback_data='upload_proof')],
             [InlineKeyboardButton("🔙 العودة", callback_data='back_to_main')]
         ]
-        await query.edit_message_text("المؤشرات الفنية 📈\nادفع ثم أرسل الإثبات للمراجعة:", reply_markup=InlineKeyboardMarkup(keyboard))
+        await query.edit_message_text("المؤشرات الفنية 📈\nادفع عبر الرابط ثم أرسل الإثبات للمراجعة:", reply_markup=InlineKeyboardMarkup(keyboard))
 
-    # بدء عملية رفع الإثبات
+# بدء عملية رفع الإثبات
     elif data == 'upload_proof':
         context.user_data['waiting_for_proof'] = True
         keyboard = [[InlineKeyboardButton("🔙 إلغاء والعودة للرئيسية", callback_data='back_to_main')]]
         await query.edit_message_text(
-            "بانتظار الإثبات ⏳\nمن فضلك أرسل الآن صورة الإيصال (Screenshot) أو رقم الطلب هنا مباشرة:",
+            "بانتظار الإثبات ⏳\nمن فضلك أرسل الآن رقم الطلب هنا مباشرة:",
             reply_markup=InlineKeyboardMarkup(keyboard)
+        )
             
-    # --- نظام القبول بتحديد المدة (للأدمن) ---
+    # --- نظام القبول وتحديد المدة (للأدمن فقط) ---
     elif data.startswith('approve_'):
-        if query.from_user.id != ADMIN_ID: return
+        if query.from_user.id != ADMIN_ID:
+            return
         
-        # التقسيم: approve_{المدة}_{آيدي_العميل}
         parts = data.split('_')
         duration_days = int(parts[1])
         cust_id = int(parts[2])
 
-        # حساب تاريخ الانتهاء
         expiry_date = (datetime.now() + timedelta(days=duration_days)).strftime('%Y-%m-%d')
-        duration_text = "شهر واحد" if duration_days == 30 else f"{duration_days // 30} شهور"
+        duration_text = "شهر" if duration_days == 30 else f"{duration_days // 30} شهور"
 
-        # 1. إنشاء رابط الدعوة
-        invite = await context.bot.create_chat_invite_link(chat_id=PRIVATE_CHANNEL_ID, member_limit=1)
-        
-        # 2. إرسال للعميل
-        await context.bot.send_message(
-            chat_id=cust_id, 
-            text=f"✅ تم تفعيل اشتراكك لمدة ({duration_text})!\nتفضل رابط القناة:\n{invite.invite_link}\n\nينتهي اشتراكك في: {expiry_date}"
-        )
-
-        # 3. جلب بيانات العميل للأرشيف
         try:
+            # 1. إنشاء رابط دعوة
+            invite = await context.bot.create_chat_invite_link(chat_id=PRIVATE_CHANNEL_ID, member_limit=1)
+            
+            # 2. مراسلة العميل
+            await context.bot.send_message(
+                chat_id=cust_id, 
+                text=f"🎉 تم تفعيل اشتراكك بنجاح لمدة ({duration_text})!\nرابط القناة الخاصة:\n{invite.invite_link}\n\nينتهي اشتراكك في تاريخ: {expiry_date}"
+            )
+
+            # 3. جلب بيانات الاسم للأرشفة
             member = await context.bot.get_chat(cust_id)
             name = f"{member.first_name} {member.last_name or ''}"
-        except: name = "مستخدم"
 
-        # 4. الإرسال للأرشيف (الداتا كاملة)
-        archive_msg = (
-            f"👤 **مشترك جديد مؤكد**\n"
-            f"━━━━━━━━━━━━━━━\n"
-            f"📝 **الاسم:** {name}\n"
-            f"🆔 **الآيدي:** `{cust_id}`\n"
-            f"⏳ **المدة:** {duration_text}\n"
-            f"📅 **ينتهي في:** `{expiry_date}`\n"
-            f"━━━━━━━━━━━━━━━"
-        )
-        await context.bot.send_message(chat_id=ARCHIVE_CHANNEL_ID, text=archive_msg, parse_mode='Markdown')
-        await query.edit_message_text(f"✅ تم تفعيل {name} لمدة {duration_text} وأرشفة البيانات.")
+            # 4. التسجيل في قناة الأرشيف
+            archive_msg = (
+                f"👤 **مشترك جديد مؤكد**\n"
+                f"━━━━━━━━━━━━━━━\n"
+                f"📝 **الاسم:** {name}\n"
+                f"🆔 **الآيدي:** `{cust_id}`\n"
+                f"⏳ **مدة الاشتراك:** {duration_text}\n"
+                f"📅 **تاريخ الانتهاء:** `{expiry_date}`\n"
+                f"━━━━━━━━━━━━━━━"
+            )
+            await context.bot.send_message(chat_id=ARCHIVE_CHANNEL_ID, text=archive_msg, parse_mode='Markdown')
+            await query.edit_message_text(f"✅ تم قبول {name} بنجاح لمدة {duration_text}.")
+
+        except Exception as e:
+            await query.edit_message_text(f"⚠️ حدث خطأ أثناء التفعيل: {str(e)}")
 
     elif data.startswith('reject_'):
-        if query.from_user.id != ADMIN_ID: return
+        if query.from_user.id != ADMIN_ID:
+            return
         cust_id = int(data.split('_')[1])
-        await context.bot.send_message(chat_id=cust_id, text="❌ نعتذر، لم يتم تأكيد الدفع. راجع الدعم.")
-        await query.edit_message_text(f"❌ تم رفض الطلب للآيدي {cust_id}.")
+        try:
+            await context.bot.send_message(chat_id=cust_id, text="❌ نعتذر، لم يتم تأكيد الدفع. يرجى التواصل مع الدعم الفني.")
+            await query.edit_message_text(f"❌ تم رفض الطلب للآيدي {cust_id}.")
+        except:
+            await query.edit_message_text(f"❌ تم الرفض (لكن تعذر مراسلة العميل).")
 
-# --- 4. استقبال الإثباتات (أزرار القبول بالمدد) ---
+# --- 4. استقبال الصور والرسائل من العملاء ---
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.user_data.get('waiting_for_proof'):
         user = update.effective_user
         
-        # أزرار فيصل: قبول شهر، 3 شهور، 6 شهور، أو رفض
+        # أزرار تحكم الأدمن (في قناة الطلبات)
         admin_kb = [
-            [InlineKeyboardButton("✅ قبول (شهر)", callback_data=f"approve_30_{user.id}")],
-            [InlineKeyboardButton("✅ قبول (3 شهور)", callback_data=f"approve_90_{user.id}")],
-            [InlineKeyboardButton("✅ قبول (6 شهور)", callback_data=f"approve_180_{user.id}")],
+            [InlineKeyboardButton("✅ قبول (30 يوم)", callback_data=f"approve_30_{user.id}")],
+            [InlineKeyboardButton("✅ قبول (90 يوم)", callback_data=f"approve_90_{user.id}")],
+            [InlineKeyboardButton("✅ قبول (180 يوم)", callback_data=f"approve_180_{user.id}")],
             [InlineKeyboardButton("❌ رفض الطلب", callback_data=f"reject_{user.id}")]
         ]
         
@@ -149,20 +154,27 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             await context.bot.send_message(chat_id=REQUESTS_CHANNEL_ID, text=f"{caption}\n📝 المحتوى: {update.message.text}", reply_markup=InlineKeyboardMarkup(admin_kb))
         
-        await update.message.reply_text("⏳ تم إرسال إثباتك. سيصلك الرد هنا فور المراجعة من سلة.")
+        await update.message.reply_text("⏳ تم إرسال إثباتك بنجاح. سيتم الرد عليك هنا فور مراجعة سلة للطلب.")
         context.user_data['waiting_for_proof'] = False
 
-# --- 5. التشغيل ---
+# --- 5. تشغيل النظام ---
 @app_flask.route('/')
-def home(): return "Bot is Online"
+def home(): 
+    return "Bot is Online"
 
 def main():
-    if not TOKEN: return
+    if not TOKEN:
+        print("❌ BOT_TOKEN is missing!")
+        return
+        
     threading.Thread(target=lambda: app_flask.run(host='0.0.0.0', port=PORT), daemon=True).start()
+    
     application = Application.builder().token(TOKEN).build()
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CallbackQueryHandler(button_handler))
     application.add_handler(MessageHandler(filters.PHOTO | filters.TEXT & ~filters.COMMAND, handle_message))
+    
+    print("🚀 البوت يعمل الآن.. تم إصلاح أخطاء الأقواس.")
     application.run_polling()
 
 if __name__ == '__main__':
