@@ -41,9 +41,9 @@ def main_menu_keyboard():
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # النص المطلوب تعديله في واجهة البوت
     welcome_message = (
-        "مرحبًا بك في بوت AZIZ Trading\n\n"
-        "بوابتك إلى تداول أكثر احترافية وقرارات مبنية على تحليل دقيق لحركة السوق \n\n"
-        "اختر من الأزرار أدناه للوصول إلى خدماتنا وابدأ رحلتك الآن"
+        "🚀 مرحبًا بك في بوت AZIZ Trading\n\n"
+        "📊 بوابتك إلى تداول أكثر احترافية وقرارات مبنية على تحليل دقيق لحركة السوق \n\n"
+        "📈 اختر من الأزرار أدناه للوصول إلى خدماتنا وابدأ رحلتك الآن"
     )
     await update.message.reply_text(
         welcome_message,
@@ -57,7 +57,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if data == 'back_to_main':
         context.user_data['waiting_for_proof'] = False
-        await query.edit_message_text("الرئيسية 🏠\n ااختر من الأزرار أدناه للوصول إلى خدماتنا وابدأ رحلتك الآن :", reply_markup=main_menu_keyboard())
+        await query.edit_message_text("الرئيسية 🏠\n 📈 ااختر من الأزرار أدناه للوصول إلى خدماتنا وابدأ رحلتك الآن :", reply_markup=main_menu_keyboard())
 
     elif data == 'menu_spx':
         keyboard = [
