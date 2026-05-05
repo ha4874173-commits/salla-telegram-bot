@@ -44,11 +44,9 @@ def add_subscriber(user_id, name, expiry_date):
     conn.commit()
     conn.close()
 
-# --- 3. إعداد Flask وLogging ---
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 app_flask = Flask(__name__)
 
-# --- 4. لوحة المفاتيح الرئيسية ---
 def main_menu_keyboard():
     keyboard = [
         [InlineKeyboardButton("📊 اشتراك تحليلات SPX الخاصة  ", callback_data='menu_spx')],
@@ -59,40 +57,33 @@ def main_menu_keyboard():
     ]
     return InlineKeyboardMarkup(keyboard)
 
-# --- 5. المهام التلقائية (تنبيه + طرد) ---
 async def daily_check_job(context: ContextTypes.DEFAULT_TYPE):
     conn = sqlite3.connect('aziz_trading.db')
     c = conn.cursor()
-    now = datetime.now()
-    now_str = now.strftime('%Y-%m-%d %H:%M')
+    now_str = datetime.now().strftime('%Y-%m-%d %H:%M')
     
-    # أ- تنبيه قبل 48 ساعة
-    threshold_48h = (now + timedelta(hours=48)).strftime('%Y-%m-%d %H:%M')
+    threshold_48h = (datetime.now() + timedelta(hours=48)).strftime('%Y-%m-%d %H:%M')
     c.execute("SELECT user_id, name, expiry_date FROM subscribers WHERE expiry_date <= ? AND notified = 0", (threshold_48h,))
-    to_notify = c.fetchall()
-    for user in to_notify:
+    for user in c.fetchall():
         try:
             await context.bot.send_message(chat_id=user[0], text=f"⚠️ تذكير: اشتراكك ينتهي بتاريخ {user[2]}. يرجى التجديد لتجنب الخروج التلقائي.")
             c.execute("UPDATE subscribers SET notified = 1 WHERE user_id = ?", (user[0],))
         except: pass
 
-    # ب- طرد من انتهى اشتراكهم
     c.execute("SELECT user_id, name FROM subscribers WHERE expiry_date <= ?", (now_str,))
-    to_kick = c.fetchall()
-    for user in to_kick:
+    for user in c.fetchall():
         uid, name = user[0], user[1]
         try:
             await context.bot.ban_chat_member(chat_id=PRIVATE_CHANNEL_ID, user_id=uid)
-            await context.bot.unban_chat_member(chat_id=PRIVATE_CHANNEL_ID, user_id=uid) # لتمكينه من العودة مستقبلاً
-            await context.bot.send_message(chat_id=uid, text="❌ انتهى اشتراكك وتمت إزالتك من القناة. ننتظر عودتك بالتجديد!")
-            await context.bot.send_message(chat_id=ARCHIVE_CHANNEL_ID, text=f"🚫 خروج تلقائي: {name} ({uid})")
+            await context.bot.unban_chat_member(chat_id=PRIVATE_CHANNEL_ID, user_id=uid)
+            await context.bot.send_message(chat_id=uid, text="❌ انتهى اشتراكك وتمت إزالتك من القناة الخاصة. يسعدنا انضمامك إلينا مرة أخرى عند التجديد!")
+            await context.bot.send_message(chat_id=ARCHIVE_CHANNEL_ID, text=f"🚫 **خروج تلقائي**\n👤 الاسم: {name}\n🆔 الآيدي: `{uid}`\n⚠️ السبب: انتهاء الاشتراك.")
             c.execute("DELETE FROM subscribers WHERE user_id = ?", (uid,))
         except: pass
         
     conn.commit()
     conn.close()
 
-# --- 6. الأوامر والمعالجات ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_message = (
         "🚀 مرحبًا بك في بوت AZIZ Trading\n\n"
@@ -108,71 +99,77 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if data == 'back_to_main':
         context.user_data['waiting_for_proof'] = False
-        await query.edit_message_text("الرئيسية 🏠\n 📈 اختر من الأزرار أدناه للوصول إلى خدماتنا وابدأ رحلتك الآن :", reply_markup=main_menu_keyboard())
+        await query.edit_message_text("الرئيسية 🏠\n 📈 ااختر من الأزرار أدناه للوصول إلى خدماتنا وابدأ رحلتك الآن :", reply_markup=main_menu_keyboard())
 
     elif data == 'menu_spx':
-        keyboard = [[InlineKeyboardButton("شهر - 100 ريال", url=URLS["spx_1m"])],
-                    [InlineKeyboardButton("3 شهور - 279 ريال", url=URLS["spx_3m"])],
-                    [InlineKeyboardButton("6 شهور - 549 ريال", url=URLS["spx_6m"])],
-                    [InlineKeyboardButton("✅ أرسل إثبات الدفع", callback_data='upload_proof')],
-                    [InlineKeyboardButton("🔙 العودة", callback_data='back_to_main')]]
+        keyboard = [
+            [InlineKeyboardButton("شهر - 100 ريال", url=URLS["spx_1m"])],
+            [InlineKeyboardButton("3 شهور - 279 ريال", url=URLS["spx_3m"])],
+            [InlineKeyboardButton("6 شهور - 549 ريال", url=URLS["spx_6m"])],
+            [InlineKeyboardButton("✅ أرسل إثبات الدفع", callback_data='upload_proof')],
+            [InlineKeyboardButton("🔙 العودة", callback_data='back_to_main')]
+        ]
         await query.edit_message_text("باقات SPX 📊\nاختر المدة للدفع عبر سلة ثم أرسل الإثبات هنا:", reply_markup=InlineKeyboardMarkup(keyboard))
 
     elif data == 'menu_indicators':
-        keyboard = [[InlineKeyboardButton("Aziz pro مؤشر - 399 ريال", url=URLS["ind_1m"])],
-                    [InlineKeyboardButton("✅ أرسل إثبات الدفع", callback_data='upload_proof')],
-                    [InlineKeyboardButton("🔙 العودة", callback_data='back_to_main')]]
+        keyboard = [
+            [InlineKeyboardButton("Aziz pro مؤشر - 399 ريال", url=URLS["ind_1m"])],
+            [InlineKeyboardButton("✅ أرسل إثبات الدفع", callback_data='upload_proof')],
+            [InlineKeyboardButton("🔙 العودة", callback_data='back_to_main')]
+        ]
         await query.edit_message_text("المؤشرات الفنية 📈\nادفع عبر الرابط ثم أرسل الإثبات للمراجعة:", reply_markup=InlineKeyboardMarkup(keyboard))
 
     elif data == 'upload_proof':
         context.user_data['waiting_for_proof'] = True
         keyboard = [[InlineKeyboardButton("🔙 إلغاء والعودة للرئيسية", callback_data='back_to_main')]]
-        await query.edit_message_text("بانتظار الإثبات ⏳\nمن فضلك أرسل الآن رقم الطلب أو صورة الإيصال هنا:", reply_markup=InlineKeyboardMarkup(keyboard))
+        await query.edit_message_text("بانتظار الإثبات ⏳\nمن فضلك أرسل الآن رقم الطلب هنا مباشرة:", reply_markup=InlineKeyboardMarkup(keyboard))
             
     elif data.startswith('approve_'):
         if query.from_user.id != ADMIN_ID: return
         parts = data.split('_')
         days, cust_id = int(parts[1]), int(parts[2])
         expiry_date = (datetime.now() + timedelta(days=days)).strftime('%Y-%m-%d %H:%M')
-        
+        duration_text = "شهر" if days == 30 else f"{days // 30} شهور"
+
         try:
             invite = await context.bot.create_chat_invite_link(chat_id=PRIVATE_CHANNEL_ID, member_limit=1)
-            await context.bot.send_message(chat_id=cust_id, text=f"🎉 تم تفعيل اشتراكك!\nالرابط: {invite.invite_link}\nينتهي في: {expiry_date}")
+            await context.bot.send_message(chat_id=cust_id, text=f"🎉 تم تفعيل اشتراكك بنجاح لمدة ({duration_text})!\nرابط القناة الخاصة:\n{invite.invite_link}\n\nينتهي اشتراكك في تاريخ: {expiry_date}")
             
             member = await context.bot.get_chat(cust_id)
             name = f"{member.first_name} {member.last_name or ''}"
-            add_subscriber(cust_id, name, expiry_date) # حفظ في قاعدة البيانات
+            add_subscriber(cust_id, name, expiry_date)
 
-            archive_msg = f"✅ **مشترك جديد**\n👤 الاسم: {name}\n🆔 الآيدي: `{cust_id}`\n📅 الانتهاء: `{expiry_date}`"
+            archive_msg = (f"👤 **مشترك جديد مؤكد**\n━━━━━━━━━━━━━━━\n"
+                           f"📝 **الاسم:** {name}\n🆔 **الآيدي:** `{cust_id}`\n"
+                           f"⏳ **مدة الاشتراك:** {duration_text}\n📅 **تاريخ الانتهاء:** `{expiry_date}`\n━━━━━━━━━━━━━━━")
             await context.bot.send_message(chat_id=ARCHIVE_CHANNEL_ID, text=archive_msg, parse_mode='Markdown')
-            await query.edit_message_text(f"✅ تم تفعيل {name}.")
+            await query.edit_message_text(f"✅ تم قبول {name} بنجاح.")
         except Exception as e:
             await query.edit_message_text(f"⚠️ خطأ: {str(e)}")
 
     elif data.startswith('reject_'):
         if query.from_user.id != ADMIN_ID: return
         cust_id = int(data.split('_')[1])
-        await context.bot.send_message(chat_id=cust_id, text="❌ نعتذر، لم يتم تأكيد الدفع.")
-        await query.edit_message_text(f"❌ تم رفض الطلب للآيدي {cust_id}.")
+        await context.bot.send_message(chat_id=cust_id, text="❌ نعتذر، لم يتم تأكيد الدفع. يرجى التواصل مع الدعم الفني.")
+        await query.edit_message_text(f"❌ تم الرفض للآيدي {cust_id}.")
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.user_data.get('waiting_for_proof'):
         user = update.effective_user
-        admin_kb = [[InlineKeyboardButton("✅ 30 يوم", callback_data=f"approve_30_{user.id}"),
-                     InlineKeyboardButton("✅ 90 يوم", callback_data=f"approve_90_{user.id}"),
-                     InlineKeyboardButton("✅ 180 يوم", callback_data=f"approve_180_{user.id}")],
-                    [InlineKeyboardButton("❌ رفض", callback_data=f"reject_{user.id}")]]
+        admin_kb = [[InlineKeyboardButton("✅ قبول (30 يوم)", callback_data=f"approve_30_{user.id}")],
+                    [InlineKeyboardButton("✅ قبول (90 يوم)", callback_data=f"approve_90_{user.id}")],
+                    [InlineKeyboardButton("✅ قبول (180 يوم)", callback_data=f"approve_180_{user.id}")],
+                    [InlineKeyboardButton("❌ رفض الطلب", callback_data=f"reject_{user.id}")]]
         
-        caption = f"🔔 إثبات جديد من {user.first_name}\n🆔 الآيدي: `{user.id}`"
+        caption = f"🔔 إثبات دفع جديد\n👤 العميل: {user.first_name}\n🆔 الآيدي: `{user.id}`"
         if update.message.photo:
             await context.bot.send_photo(chat_id=REQUESTS_CHANNEL_ID, photo=update.message.photo[-1].file_id, caption=caption, reply_markup=InlineKeyboardMarkup(admin_kb))
         else:
             await context.bot.send_message(chat_id=REQUESTS_CHANNEL_ID, text=f"{caption}\n📝 المحتوى: {update.message.text}", reply_markup=InlineKeyboardMarkup(admin_kb))
         
-        await update.message.reply_text("⏳ تم الإرسال. انتظر رسالة التفعيل هنا.")
+        await update.message.reply_text("⏳ تم إرسال إثباتك بنجاح. سيتم الرد عليك هنا فور مراجعة سلة للطلب.")
         context.user_data['waiting_for_proof'] = False
 
-# --- 7. تشغيل البوت ---
 @app_flask.route('/')
 def home(): return "Bot is Online"
 
@@ -182,9 +179,10 @@ def main():
     
     application = Application.builder().token(TOKEN).build()
     
-    # فحص التنبيه والطرد كل ساعة
-    application.job_queue.run_repeating(daily_check_job, interval=3600, first=10)
 
+    if application.job_queue:
+        application.job_queue.run_repeating(daily_check_job, interval=3600, first=10)
+    
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CallbackQueryHandler(button_handler))
     application.add_handler(MessageHandler(filters.PHOTO | filters.TEXT & ~filters.COMMAND, handle_message))
