@@ -32,10 +32,11 @@ app_flask = Flask(__name__)
 # --- 2. واجهة القائمة الرئيسية ---
 def main_menu_keyboard():
     keyboard = [
-        [InlineKeyboardButton("📊 اشتراك تحليلات SPX العالمية", callback_data='menu_spx')],
-        [InlineKeyboardButton("📈 اشتراك المؤشرات الفنية الخاصة", callback_data='menu_indicators')],
-        [InlineKeyboardButton("🆓 القناة المجانية (مدى الحياة)", url=FREE_CHANNEL_URL)],
-        [InlineKeyboardButton("💬 الدعم الفني (واتساب)", url=URLS["whatsapp_support"])]
+        [InlineKeyboardButton("📊 اشتراك تحليلات SPX الخاصة  ", callback_data='menu_spx')],
+        [InlineKeyboardButton("📈 اشتراك المؤشرات الفنية الخاصة ", callback_data='menu_indicators')],
+        [InlineKeyboardButton("🆓      القناة المجانية        ", url=FREE_CHANNEL_URL)],
+        [InlineKeyboardButton("✅     أرسل إثبات الدفع      ", callback_data='upload_proof')],
+        [InlineKeyboardButton("💬       الدعم الفني        ", url=URLS["whatsapp_support"])]
     ]
     return InlineKeyboardMarkup(keyboard)
 
